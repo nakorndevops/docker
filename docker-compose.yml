@@ -1,0 +1,18 @@
+services:
+
+  # Node.js frontend Server Service
+  login-server:
+    build:
+      context: ./login-server # Path to the Dockerfile and source code
+      dockerfile: Dockerfile
+    container_name: login-server
+    ports:
+      - "443:443"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
