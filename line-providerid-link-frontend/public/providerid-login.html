@@ -98,12 +98,12 @@
 
             await initializeLiff("2007923339-6OOe9xPE");
 
-            let lineLoginUrl = "https://10.10.99.79";
+            let lineLoginUrl = "https://dh.tranghos.moph.go.th";
 
             if (!liff.isLoggedIn()) {
                 window.location.replace(lineLoginUrl);
             } else { 
-                const redirectURI = "https://10.10.99.79/success-login";
+                const redirectURI = "https://dh.tranghos.moph.go.th/success-login";
                 const client_id = "0195360c-3c82-7d2a-9cdd-8ce44d3f1113";
                 link.href = `https://moph.id.th/oauth/redirect?client_id=${client_id}&redirect_uri=${redirectURI}&response_type=code`;
             }

@@ -31,10 +31,6 @@ app.post('/linkAccount', async (req, res) => {
   const providerIdCode = req.body.providerIdCode;
   const redirect_uri = req.body.redirect_uri;
 
-
-
-
-
   // Get Access Token
   const tokenRequestParams = {
     code: providerIdCode, // This is the temporary code
@@ -42,6 +38,8 @@ app.post('/linkAccount', async (req, res) => {
     client_id: client_id,               // Your app's client ID
     client_secret: client_secret,       // Your app's client secret
   };
+
+  console.log(tokenRequestParams);
 
   let access_token;
   try {
