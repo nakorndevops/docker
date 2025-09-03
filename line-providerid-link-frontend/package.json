@@ -1,0 +1,12 @@
+{
+  "name": "line-providerid-link-frontend",
+  "version": "1.0.0",
+  "description": "Link Line account with ProviderId",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}

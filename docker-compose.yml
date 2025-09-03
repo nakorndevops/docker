@@ -1,18 +1,98 @@
 services:
 
-  # Node.js frontend Server Service
-  login-server:
-    build:
-      context: ./login-server # Path to the Dockerfile and source code
-      dockerfile: Dockerfile
-    container_name: login-server
+  # Proxy Server
+  proxy-server:
+    image: nginx:alpine
+    container_name: proxy_server
     ports:
+      - "80:80"
       - "443:443"
+    volumes:
+      - ./proxy-server/nginx.conf:/etc/nginx/nginx.conf:ro # Mount Nginx configuration
+      - ./proxy-server/certs:/etc/nginx/certs:ro # Mount SSL certificates
+    depends_on:
+      - line-providerid-link-frontend
+      - line-providerid-link-backend
+      - hosxp-api
+    networks:
+      - app-network
+
+  # Node.js frontend Server Service
+  line-providerid-link-frontend:
+    build:
+      context: ./line-providerid-link-frontend # Path to the Dockerfile and source code
+      dockerfile: Dockerfile
+    container_name: line-providerid-link-frontend
+    ports:
+      - "3000:3000"
     environment:
       - NODE_ENV=production
     networks:
       - app-network
 
+  # HOSxP API Server Service
+  hosxp-api:
+    build:
+      context: ./hosxp-api # Path to the Dockerfile and source code
+      dockerfile: Dockerfile
+    container_name: hosxp-api
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app-network
+
+  # Node.js frontend Server Service
+  line-providerid-link-backend:
+    build:
+      context: ./line-providerid-link-backend # Path to the Dockerfile and source code
+      dockerfile: Dockerfile
+    container_name: line-providerid-link-backend
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app-network
+
+  # User DB MySQL Server
+  user-db:
+    image: mysql:9
+    container_name: user-db
+    restart: always
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 --password="$$(cat /run/secrets/db-password)" --silent']
+      interval: 3s
+      retries: 5
+      start_period: 30s
+    secrets:
+      - db-password
+    environment:
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/db-password
+      - MYSQL_DATABASE=user_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./user-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - user-data:/var/lib/mysql
+    networks:
+      - app-network
+
 networks:
   app-network:
+    name: app-network
     driver: bridge
+  db-network:
+    name: db-network
+    driver: bridge
+  api-network:
+    name: api-network
+    driver: bridge
+
+volumes:
+  user-data:
+
+secrets:
+  db-password:
+    file: ./user-db/password

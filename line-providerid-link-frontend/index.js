@@ -6,6 +6,9 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 app.use('/public', express.static(path.join(__dirname, 'public')));
+app.use('/protect', express.static(path.join(__dirname, 'protect')));
+app.use('/image', express.static(path.join(__dirname, 'image')));
+
 
 const port = process.env.PORT;
 
