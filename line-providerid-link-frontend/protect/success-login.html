@@ -1,178 +1,179 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Success ProviderID Login</title>
-    </head>
 
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Success ProviderID Login</title>
+</head>
 
-    <body>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
 
-        <h1>Success ProviderID Login</h1>
+<body>
 
-    </body>
+    <h1>Success ProviderID Login</h1>
 
-    <script>
-        async function initializeLiff(liffIds) {
-            try {
-                await liff.init({ liffId: liffIds });
-                // Start to use LIFF's API
-            } catch (err) {
-                // Error during initialization
-                console.error(err.code, err.message);
-            }
+</body>
+
+<script>
+    async function initializeLiff(liffIds) {
+        try {
+            await liff.init({ liffId: liffIds });
+            // Start to use LIFF's API
+        } catch (err) {
+            // Error during initialization
+            console.error(err.code, err.message);
+        }
+    }
+
+    async function verifyAccessToken(accessToken) {
+        // 1. Validate the input parameter
+        if (!accessToken) {
+            throw new Error('Access token is required for verification.');
         }
 
-        async function verifyAccessToken(accessToken) {
-            // 1. Validate the input parameter
-            if (!accessToken) {
-                throw new Error('Access token is required for verification.');
-            }
+        // 2. Use the URL API for safe query parameter handling
+        const url = new URL('https://api.line.me/oauth2/v2.1/verify');
+        url.searchParams.append('access_token', accessToken);
 
-            // 2. Use the URL API for safe query parameter handling
-            const url = new URL('https://api.line.me/oauth2/v2.1/verify');
-            url.searchParams.append('access_token', accessToken);
+        try {
+            const response = await fetch(url);
 
-            try {
-                const response = await fetch(url);
-
-                // 3. Check if the HTTP response status is OK (e.g., 200)
-                if (!response.ok) {
+            // 3. Check if the HTTP response status is OK (e.g., 200)
+            if (!response.ok) {
                 // Provide a more detailed error message including the status code
                 throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
-                }
-
-                // 4. Parse the JSON body and return it
-                return await response.json();
-
-            } catch (error) {
-                // 5. Catch network errors and re-throw for the caller to handle
-                console.error('Error verifying access token:', error.message);
-                // Re-throwing the error allows the calling function to handle the failure.
-                throw error;
             }
-        }        
-        
-        async function getUserProfile(accessToken) {
-            const url = 'https://api.line.me/v2/profile';
 
-            try {
-                const response = await fetch(url, {
+            // 4. Parse the JSON body and return it
+            return await response.json();
+
+        } catch (error) {
+            // 5. Catch network errors and re-throw for the caller to handle
+            console.error('Error verifying access token:', error.message);
+            // Re-throwing the error allows the calling function to handle the failure.
+            throw error;
+        }
+    }
+
+    async function getUserProfile(accessToken) {
+        const url = 'https://api.line.me/v2/profile';
+
+        try {
+            const response = await fetch(url, {
                 method: 'GET', // Corresponds to -X GET in cURL
                 headers: {
                     // Corresponds to -H 'Authorization: Bearer ...' in cURL
                     'Authorization': `Bearer ${accessToken}`,
                 },
-                });
+            });
 
-                // Check if the request was successful
-                if (!response.ok) {
+            // Check if the request was successful
+            if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-
-                // Parse the JSON response from the API
-                const profileData = await response.json();
-                return profileData;
-
-            } catch (error) {
-                // Handle any errors that occurred during the fetch
-                console.error('Could not fetch profile:', error);
             }
+
+            // Parse the JSON response from the API
+            const profileData = await response.json();
+            return profileData;
+
+        } catch (error) {
+            // Handle any errors that occurred during the fetch
+            console.error('Could not fetch profile:', error);
         }
-        
-async function linkAccount(LineUserId, providerIdCode, currentUrl) {
-  // 1. Validate that the required IDs are provided
-  if (!LineUserId || !providerIdCode) {
-    throw new Error('Both lineUserId and providerIdCode are required.');
-  }
-
-  const endpointUrl = 'https://10.10.99.79/line-providerid-link-backend/linkAccount';
-
-  // 2. Prepare the data to be sent in the request body
-  const requestData = {
-    LineUserId: LineUserId,
-    providerIdCode: providerIdCode,
-    redirect_uri: currentUrl
-  };
-
-  try {
-    // 3. Make the POST request using the fetch API
-    const response = await fetch(endpointUrl, {
-      method: 'POST',
-      headers: {
-        // Tell the server we are sending JSON data
-        'Content-Type': 'application/json',
-        // You might need other headers like 'Accept' or 'Authorization'
-        // 'Accept': 'application/json',
-      },
-      // Convert the JavaScript object to a JSON string
-      body: JSON.stringify(requestData),
-    });
-
-    // 4. Check if the HTTP response was successful
-    if (!response.ok) {
-      // Create an error with details from the server's response
-      throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
     }
 
-    // 5. Parse the JSON response from the server and return it
-    return await response.json();
+    async function linkAccount(LineUserId, providerIdCode, currentUrl) {
+        // 1. Validate that the required IDs are provided
+        if (!LineUserId || !providerIdCode) {
+            throw new Error('Both lineUserId and providerIdCode are required.');
+        }
 
-  } catch (error) {
-    // 6. Catch network errors or other issues and log them
-    console.error('There was a problem with the verification request:', error.message);
-    // Re-throw the error so the calling code can handle it
-    throw error;
-  }
-}        
-        
-        window.onload = async function() {
+        const endpointUrl = 'https://10.10.99.79/line-providerid-link-backend/linkAccount';
 
-            await initializeLiff("2007923339-6OOe9xPE");
-
-            let lineLoginUrl = "https://10.10.99.79";
-
-            if (!liff.isLoggedIn()) {
-                window.location.replace(lineLoginUrl);
-            } else { 
-            
-
-                // Get Access Token
-                const accessToken = await liff.getAccessToken();                
-
-                // Verify Access Token
-                const data = await verifyAccessToken(accessToken);
-                
-                // Get User Profile
-                const userProfile = await getUserProfile(accessToken);
-                const LineUserId = userProfile.userId;
-
-                // Get providerID Code
-                const queryString = window.location.search;
-                const urlParams = new URLSearchParams(queryString);
-                const providerIdCode = urlParams.get('code');
-
-                // Get currentUrl
-                const currentUrl = window.location.href.split('?')[0];
-
-                console.log(providerIdCode);
-                console.log(LineUserId);
-                console.log(currentUrl);
-
-                
-                // Send LineUserId ProviderIdCode
-                const loginResult = await linkAccount(LineUserId, providerIdCode, currentUrl);
-                const response_status = loginResult.status;
-                const special_title_th = loginResult.data.special_title_th;
-                const name_th = loginResult.data.name_th;
-                const license_id = loginResult.data.organization[0].license_id;
-                const hname_th = loginResult.data.organization[0].hname_th;
-                console.log(loginResult.data, response_status, special_title_th, name_th, license_id, hname_th);
-                
-            }
+        // 2. Prepare the data to be sent in the request body
+        const requestData = {
+            LineUserId: LineUserId,
+            providerIdCode: providerIdCode,
+            redirect_uri: currentUrl
         };
 
-    </script>
+        try {
+            // 3. Make the POST request using the fetch API
+            const response = await fetch(endpointUrl, {
+                method: 'POST',
+                headers: {
+                    // Tell the server we are sending JSON data
+                    'Content-Type': 'application/json',
+                    // You might need other headers like 'Accept' or 'Authorization'
+                    // 'Accept': 'application/json',
+                },
+                // Convert the JavaScript object to a JSON string
+                body: JSON.stringify(requestData),
+            });
+
+            // 4. Check if the HTTP response was successful
+            if (!response.ok) {
+                // Create an error with details from the server's response
+                throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
+            }
+
+            // 5. Parse the JSON response from the server and return it
+            return await response.json();
+
+        } catch (error) {
+            // 6. Catch network errors or other issues and log them
+            console.error('There was a problem with the verification request:', error.message);
+            // Re-throw the error so the calling code can handle it
+            throw error;
+        }
+    }
+
+    window.onload = async function () {
+
+        await initializeLiff("2007923339-6OOe9xPE");
+
+        let lineLoginUrl = "https://10.10.99.79";
+
+        if (!liff.isLoggedIn()) {
+            window.location.replace(lineLoginUrl);
+        } else {
+
+
+            // Get Access Token
+            const accessToken = await liff.getAccessToken();
+
+            // Verify Access Token
+            const data = await verifyAccessToken(accessToken);
+
+            // Get User Profile
+            const userProfile = await getUserProfile(accessToken);
+            const LineUserId = userProfile.userId;
+
+            // Get providerID Code
+            const queryString = window.location.search;
+            const urlParams = new URLSearchParams(queryString);
+            const providerIdCode = urlParams.get('code');
+
+            // Get currentUrl
+            const currentUrl = window.location.href.split('?')[0];
+
+            console.log(providerIdCode);
+            console.log(LineUserId);
+            console.log(currentUrl);
+
+
+            // Send LineUserId ProviderIdCode
+            const loginResult = await linkAccount(LineUserId, providerIdCode, currentUrl);
+            const response_status = loginResult.status;
+            const special_title_th = loginResult.data.special_title_th;
+            const name_th = loginResult.data.name_th;
+            const license_id = loginResult.data.organization[0].license_id;
+            const hname_th = loginResult.data.organization[0].hname_th;
+            console.log(loginResult.data);
+
+        }
+    };
+
+</script>
 
 </html>

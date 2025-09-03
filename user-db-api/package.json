@@ -1,0 +1,14 @@
+{
+  "name": "user-db-api",
+  "version": "1.0.0",
+  "description": "user-db-api",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "mysql2": "^3.14.3"
+  }
+}

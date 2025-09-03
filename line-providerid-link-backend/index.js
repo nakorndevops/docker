@@ -36,19 +36,19 @@ app.post('/linkAccount', async (req, res) => {
 
 
   // Get Access Token
-const tokenRequestParams = {
-  code: providerIdCode, // This is the temporary code
-  redirect_uri: redirect_uri,    // Must match your registered callback URL
-  client_id: client_id,               // Your app's client ID
-  client_secret: client_secret,       // Your app's client secret
-};
+  const tokenRequestParams = {
+    code: providerIdCode, // This is the temporary code
+    redirect_uri: redirect_uri,    // Must match your registered callback URL
+    client_id: client_id,               // Your app's client ID
+    client_secret: client_secret,       // Your app's client secret
+  };
 
   let access_token;
   try {
     console.log('Attempting to get access token...');
     const tokenData = await getAccessToken(tokenRequestParams);
     access_token = tokenData.data.access_token;
-    
+
     console.log('✅ Successfully retrieved token data:');
     // Now you can use tokenData.access_token to make authenticated API calls
 
@@ -57,13 +57,13 @@ const tokenRequestParams = {
   }
 
   // Get Service Token
-const serviceCredentials = {
-  client_id: client_id2,
-  secret_key: client_secret2,
-  token: access_token,
-};
+  const serviceCredentials = {
+    client_id: client_id2,
+    secret_key: client_secret2,
+    token: access_token,
+  };
 
-let service_token;
+  let service_token;
   try {
     console.log('Requesting service token from MOPH API...');
     const service_data = await getServiceToken(serviceCredentials);
@@ -76,18 +76,18 @@ let service_token;
   }
 
   // Get Profile
-const apiCredentials = {
-  accessToken: service_token,
-  clientId: client_id2,
-  secretKey: client_secret2,
-};  
+  const apiCredentials = {
+    accessToken: service_token,
+    clientId: client_id2,
+    secretKey: client_secret2,
+  };
 
-let profileData;
+  let profileData;
 
   try {
     console.log('Fetching provider profile...');
     profileData = await getProviderProfile(apiCredentials);
-    
+
     console.log('✅ Successfully fetched profile data:');
 
   } catch (error) {
