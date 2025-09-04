@@ -13,6 +13,7 @@ services:
     depends_on:
       - line-providerid-link-frontend
       - line-providerid-link-backend
+      - line-webhook-server
       - hosxp-api
       - user-db-api
     networks:
@@ -39,6 +40,19 @@ services:
     container_name: hosxp-api
     ports:
       - "3001:3001"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app-network
+
+  # Line Webhook Server Service
+  line-webhook-server:
+    build:
+      context: ./line-webhook-server # Path to the Dockerfile and source code
+      dockerfile: Dockerfile
+    container_name: line-webhook-server
+    ports:
+      - "3004:3004"
     environment:
       - NODE_ENV=production
     networks:

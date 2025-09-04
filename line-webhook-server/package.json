@@ -1,0 +1,13 @@
+{
+  "name": "hosxp-api",
+  "version": "1.0.0",
+  "description": "Link Line account with ProviderId",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
