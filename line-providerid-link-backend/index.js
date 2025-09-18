@@ -42,57 +42,75 @@ app.post('/linkAccount', async (req, res) => {
   console.log(tokenRequestParams);
 
   let access_token;
-  try {
-    console.log('Attempting to get access token...');
-    const tokenData = await getAccessToken(tokenRequestParams);
-    access_token = tokenData.data.access_token;
-
-    console.log('✅ Successfully retrieved token data:');
-    // Now you can use tokenData.access_token to make authenticated API calls
-
-  } catch (error) {
-    console.error('🔴 Failed to get access token:', error.message);
-  }
-
-  // Get Service Token
-  const serviceCredentials = {
-    client_id: client_id2,
-    secret_key: client_secret2,
-    token: access_token,
-  };
-
   let service_token;
-  try {
-    console.log('Requesting service token from MOPH API...');
-    const service_data = await getServiceToken(serviceCredentials);
-    service_token = service_data.data.access_token;
-    console.log('✅ Successfully received response:');
-    // You can now use the data returned by the API
-
-  } catch (error) {
-    console.error('🔴 Failed to request service token:', error.message);
-  }
-
-  // Get Profile
-  const apiCredentials = {
-    accessToken: service_token,
-    clientId: client_id2,
-    secretKey: client_secret2,
-  };
-
   let profileData;
+  let errorMessage;
 
-  try {
-    console.log('Fetching provider profile...');
-    profileData = await getProviderProfile(apiCredentials);
+  if (tokenRequestParams) {
+    try {
+      console.log('Attempting to get access token...');
+      const tokenData = await getAccessToken(tokenRequestParams);
+      access_token = tokenData.data.access_token;
 
-    console.log('✅ Successfully fetched profile data:');
+      console.log('✅ Successfully retrieved token data:');
+      // Now you can use tokenData.access_token to make authenticated API calls
 
-  } catch (error) {
-    console.error('🔴 Failed to fetch provider profile:', error.message);
+    } catch (error) {
+      console.error('🔴 Failed to get access token:', error.message);
+      errorMessage = '🔴 Failed to get access token:';
+    }
   }
 
-  res.json(profileData);
+  if (access_token) {
+    // Get Service Token
+    const serviceCredentials = {
+      client_id: client_id2,
+      secret_key: client_secret2,
+      token: access_token,
+    };
+
+    try {
+      console.log('Requesting service token from MOPH API...');
+      const service_data = await getServiceToken(serviceCredentials);
+      service_token = service_data.data.access_token;
+      console.log('✅ Successfully received response:');
+      // You can now use the data returned by the API
+
+    } catch (error) {
+      console.error('🔴 Failed to request service token:', error.message);
+      errorMessage = '🔴 Failed to request service token:';
+    }
+  }
+
+  if (service_token) {
+    // Get Profile
+    const apiCredentials = {
+      accessToken: service_token,
+      clientId: client_id2,
+      secretKey: client_secret2,
+    };
+
+    try {
+      console.log('Fetching provider profile...');
+      profileData = await getProviderProfile(apiCredentials);
+
+      console.log('✅ Successfully fetched profile data:');
+
+    } catch (error) {
+      console.error('🔴 Failed to fetch provider profile:', error.message);
+      errorMessage = '🔴 Failed to fetch provider profile:';
+    }
+  }
+  
+  if(profileData) {
+    res.json(profileData);
+  } else {
+    const errorResponse = {
+      Error : errorMessage
+    };
+     res.json(errorResponse);
+  }
+  
 })
 
 server.listen(port, () => {

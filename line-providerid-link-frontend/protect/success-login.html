@@ -10,11 +10,13 @@
 
 <body>
 
-    <h1>Success ProviderID Login</h1>
+    <h1 id="showLoginResult"></h1>
 
 </body>
 
 <script>
+    const showLoginResult = document.getElementById("showLoginResult");
+
     async function initializeLiff(liffIds) {
         try {
             await liff.init({ liffId: liffIds });
@@ -138,7 +140,6 @@
             window.location.replace(lineLoginUrl);
         } else {
 
-
             // Get Access Token
             const accessToken = await liff.getAccessToken();
 
@@ -157,20 +158,25 @@
             // Get currentUrl
             const currentUrl = window.location.href.split('?')[0];
 
+            console.log(data);
             console.log(providerIdCode);
             console.log(LineUserId);
             console.log(currentUrl);
 
-
             // Send LineUserId ProviderIdCode
             const loginResult = await linkAccount(LineUserId, providerIdCode, currentUrl);
-            const response_status = loginResult.status;
-            const special_title_th = loginResult.data.special_title_th;
-            const name_th = loginResult.data.name_th;
-            const license_id = loginResult.data.organization[0].license_id;
-            const hname_th = loginResult.data.organization[0].hname_th;
+            // const response_status = loginResult.status;
+            // const special_title_th = loginResult.data.special_title_th;
+            // const name_th = loginResult.data.name_th;
+            // const license_id = loginResult.data.organization[0].license_id;
+            // const hname_th = loginResult.data.organization[0].hname_th;
             console.log(loginResult);
-
+            if(loginResult.Error) {
+                showLoginResult.innerHTML = "Fail Login";
+            } else {
+                showLoginResult.innerHTML = "Success Login";
+            }
+            
         }
     };
 
