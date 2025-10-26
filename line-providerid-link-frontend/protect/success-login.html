@@ -3,7 +3,7 @@
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Success ProviderID Login</title>
+    <title>Registration</title>
 
     <style>
         body {
@@ -79,18 +79,23 @@
             width: 90%;
             box-sizing: border-box;
         }
+
         .fail {
-            color: #dc3545; /* Red */
+            color: #dc3545;
+            /* Red */
             margin-top: 0;
             margin-bottom: 0.5rem;
         }
+
         .error-message {
-            color: #6c757d; /* Gray */
+            color: #6c757d;
+            /* Gray */
             margin-bottom: 1.5rem;
             font-size: 1.1em;
         }
+
         .close-btn-error {
-            background-color: #6c757d;
+            background-color: #dc3545;
             color: white;
             border: none;
             padding: 12px 24px;
@@ -99,8 +104,9 @@
             cursor: pointer;
             transition: background-color 0.2s ease;
         }
+
         .close-btn-error:hover {
-            background-color: #5a6268;
+            background-color: #c82333;
         }
     </style>
 
@@ -110,21 +116,25 @@
 
 <body>
 
-    <div class="container">
-        <h1 class="success">Login Successful</h1>
+    <div id="successRegistration" class="container">
+        <h1 class="success">Registration success</h1>
         <div class="info-grid">
             <div class="label">ชื่อ-สกุล</div>
-            <div id="name_th" class="value">สมชาย น้องสมปอง</div>
+            <div id="name_th" class="value"></div>
             <div class="label">วิชาชีพ</div>
-            <div id="position" class="value">แพทย์</div>
+            <div id="position" class="value"></div>
+            <div class="label">เลขใบประกอบวิชาชีพ</div>
+            <div id="license_id" class="value"></div>
+            <div class="label">สังกัด</div>
+            <div id="hname_th" class="value"></div>
         </div>
 
         <button class="close-btn" onclick="closeLiffApp()">Close Window</button>
     </div>
 
-    <div class="container-error">
-        <h1 class="fail">Login Failed</h1>
-        <p class="error-message">Invalid username or password. Please try again.</p>
+    <div id="failedRegistration" class="container-error">
+        <h1 class="fail">Registration Failed</h1>
+        <p id="errorMessage" class="error-message"></p>
         <button class="close-btn-error" onclick="closeLiffApp()">Close</button>
     </div>
 
@@ -200,52 +210,6 @@
         }
     }
 
-    async function linkAccount(LineUserId, providerIdCode, currentUrl) {
-        // 1. Validate that the required IDs are provided
-        if (!LineUserId || !providerIdCode) {
-            throw new Error('Both lineUserId and providerIdCode are required.');
-        }
-
-        const endpointUrl = 'https://dh.tranghos.moph.go.th/line-providerid-link-backend/linkAccount';
-
-        // 2. Prepare the data to be sent in the request body
-        const requestData = {
-            LineUserId: LineUserId,
-            providerIdCode: providerIdCode,
-            redirect_uri: currentUrl
-        };
-
-        try {
-            // 3. Make the POST request using the fetch API
-            const response = await fetch(endpointUrl, {
-                method: 'POST',
-                headers: {
-                    // Tell the server we are sending JSON data
-                    'Content-Type': 'application/json',
-                    // You might need other headers like 'Accept' or 'Authorization'
-                    'Accept': 'application/json',
-                },
-                // Convert the JavaScript object to a JSON string
-                body: JSON.stringify(requestData),
-            });
-
-            // 4. Check if the HTTP response was successful
-            if (!response.ok) {
-                // Create an error with details from the server's response
-                throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
-            }
-
-            // 5. Parse the JSON response from the server and return it
-            return await response.json();
-
-        } catch (error) {
-            // 6. Catch network errors or other issues and log them
-            console.error('There was a problem with the verification request:', error.message);
-            // Re-throw the error so the calling code can handle it
-            throw error;
-        }
-    }
-
     function closeLiffApp() {
         liff.closeWindow();
     }
@@ -260,15 +224,21 @@
             window.location.replace(lineLoginUrl);
         } else {
 
+            const successRegistration = document.getElementById("successRegistration");
+            const name_th = document.getElementById("name_th");
+            const position = document.getElementById("position");
+            const license_id = document.getElementById("license_id");
+            const hname_th = document.getElementById("hname_th");
+
+            const failedRegistration = document.getElementById("failedRegistration");
+            const errorMessage = document.getElementById("errorMessage");
+
             // Get Access Token
             const accessToken = await liff.getAccessToken();
 
-            // Verify Access Token
-            const data = await verifyAccessToken(accessToken);
-
             // Get User Profile
-            const userProfile = await getUserProfile(accessToken);
-            const LineUserId = userProfile.userId;
+            const lineUserProfile = await getUserProfile(accessToken);
+            const LineUserId = lineUserProfile.userId;
 
             // Get providerID Code
             const queryString = window.location.search;
@@ -278,29 +248,45 @@
             // Get currentUrl
             const currentUrl = window.location.href.split('?')[0];
 
-            console.log(data);
-            console.log(providerIdCode);
-            console.log(LineUserId);
-            console.log(currentUrl);
+            const endpointUrl = 'https://dh.tranghos.moph.go.th/line-providerid-link-backend/linkAccount';
 
-            // Send LineUserId ProviderIdCode
-            const loginResult = await linkAccount(LineUserId, providerIdCode, currentUrl);
-            // const response_status = loginResult.status;
-            // const special_title_th = loginResult.data.special_title_th;
-            // const name_th = loginResult.data.name_th;
-            // const license_id = loginResult.data.organization[0].license_id;
-            // const hname_th = loginResult.data.organization[0].hname_th;
-            console.log(loginResult);
-            console.log(loginResult.status);
+            // Prepare the data to be sent in the request body
+            const requestData = {
+                LineUserId: LineUserId,
+                providerIdCode: providerIdCode,
+                redirect_uri: currentUrl
+            };
 
-            /*
-            if (loginResult.Error) {
-                //showLoginResult.innerHTML = "Fail Login";
-            } else {
-                //showLoginResult.innerHTML = "Success Login";
+            try {
+                // Make the POST request using the fetch API
+                const response = await fetch(endpointUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    // Convert the JavaScript object to a JSON string
+                    body: JSON.stringify(requestData),
+                });
+
+                const userProfile = await response.json();
+
+                if (response.status == 200) {
+                    successRegistration.style.display = "block";
+                    name_th.innerHTML = userProfile.data.name_th;
+                    position.innerHTML = userProfile.data.organization[0].position;
+                    license_id.innerHTML = userProfile.data.organization[0].license_id;
+                    hname_th.innerHTML = userProfile.data.organization[0].hname_th;
+                } else {
+                    failedRegistration.style.display = "block";
+                    errorMessage.innerHTML = userProfile.error;
+                }
+
+            } catch (error) {
+                failedRegistration.style.display = "block";
+                errorMessage.innerHTML = 'There was a problem with registration: ' + error.message;
+                throw error;
             }
-            */
-
         }
     };
 

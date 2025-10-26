@@ -22,80 +22,89 @@ const userdb_apikey = process.env.USER_DB_APIKEY;
 app.post('/chatbot', async (request, response) => {
   const LineUserID = request.body.events[0].source.userId;
   const replyToken = request.body.events[0].replyToken;
-  let replyMessage;
-  let userExist;
+  const userMessage = request.body.events[0].message.text;
+
   // Check User Exist
   try {
-    userExist = await checkUserExists(LineUserID, userdb_apikey);
-    console.log("API Response:", userExist);
-  } catch (error) {
-    console.error("Failed to check user:", error.message);
-  }
-  // User nor exist Reply 
-  if (!userExist) {
-    // Reply Message
+    const userExist = await checkUserExists(LineUserID, userdb_apikey);
 
-    replyMessage = [
-      {
-        "type": "bubble",
-        "hero": {
-          "type": "box",
-          "layout": "vertical",
-          "contents": [
-            {
-              "type": "image",
-              "url": "https://dh.tranghos.moph.go.th/image/provider.png",
-              "align": "center",
-              "aspectMode": "fit",
-              "size": "full"
-            }
-          ],
-          "action": {
-            "type": "uri",
-            "label": "action",
-            "uri": "https://dh.tranghos.moph.go.th/login"
-          }
-        },
-        "body": {
-          "type": "box",
-          "layout": "vertical",
-          "contents": [
-            {
-              "type": "button",
+    // User nor exist Reply 
+    if (!userExist) {
+      // Reply Message to register
+      const replyMessage = [
+        {
+          "type": "flex",
+          "altText": "This is a Flex Message",
+          "contents": {
+            "type": "bubble",
+            "hero": {
+              "type": "box",
+              "layout": "vertical",
+              "contents": [
+                {
+                  "type": "image",
+                  "url": "https://dh.tranghos.moph.go.th/image/provider.png",
+                  "align": "center",
+                  "aspectMode": "fit",
+                  "size": "full"
+                }
+              ],
               "action": {
                 "type": "uri",
-                "label": "Register with ProviderID",
+                "label": "action",
                 "uri": "https://dh.tranghos.moph.go.th/login"
-              },
-              "style": "primary"
+              }
+            },
+            "body": {
+              "type": "box",
+              "layout": "vertical",
+              "contents": [
+                {
+                  "type": "button",
+                  "action": {
+                    "type": "uri",
+                    "label": "Register with ProviderID",
+                    "uri": "https://dh.tranghos.moph.go.th/login"
+                  },
+                  "style": "primary"
+                }
+              ]
+            },
+            "styles": {
+              "header": {
+                "backgroundColor": "#00B900"
+              }
             }
-          ]
-        },
-        "styles": {
-          "header": {
-            "backgroundColor": "#00B900"
           }
         }
-      }
+      ];
+
+      const dataString = JSON.stringify({
+        replyToken: replyToken,
+        messages: replyMessage
+      });
+      await LineReply(dataString, line_access_token);
+    } else {
+      // If user exist
+      // Check for active user
+    }
+    response.sendStatus(200);
+
+  } catch (error) {
+    console.error("Failed to check user:", error.message);
+    const replyMessage = [
+        {
+          type: "text",
+          text: "Internal server error.",
+        }      
     ];
-
-
-    /*
-    replyMessage = [
-      {
-        type: "text",
-        text: "https://dh.tranghos.moph.go.th/"
-      }
-    ];
-    */
-
     const dataString = JSON.stringify({
       replyToken: replyToken,
       messages: replyMessage
     });
     await LineReply(dataString, line_access_token);
+    response.sendStatus(200);
   }
-  response.sendStatus(200);
 })
 
 server.listen(port, () => {

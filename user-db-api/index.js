@@ -94,7 +94,7 @@ app.post("/checkUserExist", verifyToken, async (request, response) => {
   // Check does user exist
   try {
     // Use the imported function
-    const userFound = await checkExist(pool, 'user', 'line_id', LineUserId);
+    const userFound = await checkExist(pool, 'user', 'LineUserId', LineUserId);
     response.json(userFound);
   } catch (error) {
     console.error("Critical error in application logic:", error.message);
@@ -102,9 +102,39 @@ app.post("/checkUserExist", verifyToken, async (request, response) => {
   }
 });
 
+// List User
+app.post("/listUser", verifyToken, async (request, response) => {
+  try {
+    const myQuery = `SELECT * FROM user;`;
+    const [result, fields] = await pool.query(myQuery);
+    response.send(result);
+  } catch (err) {
+    console.error(err);
+    response.status(500).send("Error executing query");
+  }
+});
+
+// Create User
 app.post("/createUser", verifyToken, async (request, response) => {
   console.log(request.body);
-  response.json(true);
+  const license_id = request.body.license_id;
+  const LineUserId = request.body.LineUserId;
+
+  if (!license_id || !LineUserId) {
+    return response.status(400).json({ error: "Incomplete request parameter !" });
+  }
+
+  try {
+    const myQuery = `
+      INSERT INTO user (license_id, LineUserId)
+      VALUES (?, ?);
+    `;
+    const [result, fields] = await pool.query(myQuery, [license_id, LineUserId]);
+    response.status(201).send(true);
+  } catch (err) {
+    console.error(err);
+    response.status(500).send("Error cannot create user !");
+  }
 });
 
 server.listen(port, () => {

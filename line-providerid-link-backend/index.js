@@ -45,9 +45,9 @@ app.post('/linkAccount', async (req, res) => {
 
   // Check if parameter complete
   if (!client_id) {
-    res.status(500).send("No client ID !");
+    res.status(500).json({error: 'No client ID !'});
   } else if (!LineUserId || !providerIdCode || !redirect_uri) {
-    res.status(400).send("Incomplete request parameter !");
+    res.status(400).json("Incomplete request parameter !");
   } else {
     // Get Access Token
     tokenRequestParams = {
@@ -63,7 +63,7 @@ app.post('/linkAccount', async (req, res) => {
       console.log('✅ Successfully retrieved token data:');
     } catch (error) {
       console.error('🔴 Failed to get access token:', error.message);
-      res.status(500).send('Failed to get access token !');
+      res.status(500).json({error: 'Failed to get access token !'});
     }
   }
 
@@ -82,7 +82,7 @@ app.post('/linkAccount', async (req, res) => {
       console.log('✅ Successfully received response:');
     } catch (error) {
       console.error('🔴 Failed to request service token:', error.message);
-      res.status(500).send('Failed to get service token !');
+      res.status(500).json({error: 'Failed to get service token !'});
     }
   }
 
@@ -102,7 +102,7 @@ app.post('/linkAccount', async (req, res) => {
 
     } catch (error) {
       console.error('🔴 Failed to fetch provider profile:', error.message);
-      res.status(500).send('Failed to get user profile !');
+      res.status(500).json({error: 'Failed to get user profile !'});
     }
   }
 
@@ -120,25 +120,29 @@ app.post('/linkAccount', async (req, res) => {
     } catch (error) {
       // This will catch any errors thrown by checkActiveUser
       console.error('🔴 An error occurred:', error.message);
-      res.status(500).send('Failed to check user status !');
+      res.status(500).json({error: 'Failed to check user status !'});
     }
   }
 
   if (userStatus) {
-    // User is active
+    // Create user if user is active
     try {
       const result = await createUser(LineUserId, license_id, user_db_api_key);
       console.log('--- Operation Successful ---');
       console.log('API Result:', result);
-      res.json(profileData);
+      if (result === true) {
+        res.status(200).json(profileData);
+      } else {
+        res.status(500).json({error: 'Failed to create user !'});
+      }
     } catch (error) {
       console.log('--- Operation Failed ---');
       console.error('Failed to create user:', error.message);
-      res.status(500).send('Failed to create user !');
+      res.status(500).json({error: 'Failed to create user !'});
     }
   } else {
     // If User is inactive or no user founded
-    res.status(401).send('User is inactive or no user founded !');
+    res.status(401).json({error: 'User is inactive or user not founded !'});
   }
 })
 
