@@ -3,19 +3,18 @@ services:
   # Proxy Server
   proxy-server:
     image: nginx:alpine
-    container_name: proxy_server
+    container_name: proxy-server
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - TZ=Asia/Bangkok # Replace with your desired timezone      
     volumes:
       - ./proxy-server/nginx.conf:/etc/nginx/nginx.conf:ro # Mount Nginx configuration
-      - ./proxy-server/certs:/etc/nginx/certs:ro # Mount SSL certificates
+      - ./certs/proxy-server.crt:/etc/nginx/certs/proxy-server.crt:ro # Mount the bundle as read-only 
+      - ./certs/proxy-server.key:/etc/nginx/certs/proxy-server.key:ro # Mount the bundle as read-only       
     depends_on:
-      - line-providerid-link-frontend
-      - line-providerid-link-backend
-      - line-webhook-server
-      - hosxp-api
-      - user-db-api
+      - user-db-api      
     networks:
       - app-network
 
@@ -27,34 +26,17 @@ services:
     container_name: line-providerid-link-frontend
     ports:
       - "3000:3000"
+    volumes:
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
+      - ./certs/line-providerid-link-frontend.crt:/usr/src/app/cert/line-providerid-link-frontend.crt:ro # Mount the bundle as read-only 
+      - ./certs/line-providerid-link-frontend.key:/usr/src/app/cert/line-providerid-link-frontend.key:ro # Mount the bundle as read-only      
     environment:
       - NODE_ENV=production
-    networks:
-      - app-network
-
-  # HOSxP API Server Service
-  hosxp-api:
-    build:
-      context: ./hosxp-api # Path to the Dockerfile and source code
-      dockerfile: Dockerfile
-    container_name: hosxp-api
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=production
-    networks:
-      - app-network
-
-  # Line Webhook Server Service
-  line-webhook-server:
-    build:
-      context: ./line-webhook-server # Path to the Dockerfile and source code
-      dockerfile: Dockerfile
-    container_name: line-webhook-server
-    ports:
-      - "3004:3004"
-    environment:
-      - NODE_ENV=production
+      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem      
+    depends_on:
+      proxy-server:
+        condition: service_started
     networks:
       - app-network
 
@@ -66,8 +48,62 @@ services:
     container_name: line-providerid-link-backend
     ports:
       - "3002:3002"
+    volumes:
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
+      - ./certs/line-providerid-link-backend.crt:/usr/src/app/cert/line-providerid-link-backend.crt:ro # Mount the bundle as read-only 
+      - ./certs/line-providerid-link-backend.key:/usr/src/app/cert/line-providerid-link-backend.key:ro # Mount the bundle as read-only   
     environment:
       - NODE_ENV=production
+      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem
+    depends_on:
+      proxy-server:
+        condition: service_started
+    networks:
+      - app-network      
+
+  # HOSxP API Server Service
+  hosxp-api:
+    build:
+      context: ./hosxp-api # Path to the Dockerfile and source code
+      dockerfile: Dockerfile
+    container_name: hosxp-api
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
+      - ./certs/hosxp-api.crt:/usr/src/app/cert/hosxp-api.crt:ro # Mount the bundle as read-only 
+      - ./certs/hosxp-api.key:/usr/src/app/cert/hosxp-api.key:ro # Mount the bundle as read-only 
+      - ./keys/public-key/hosxp-api-public-key.pem:/usr/src/app/public-key/hosxp-api-public-key.pem:ro
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem      
+    depends_on:
+      proxy-server:
+        condition: service_started
+    networks:
+      - app-network
+
+  # Line Webhook Server Service
+  line-webhook-server:
+    build:
+      context: ./line-webhook-server # Path to the Dockerfile and source code
+      dockerfile: Dockerfile
+    container_name: line-webhook-server
+    ports:
+      - "3004:3004"
+    volumes:
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
+      - ./certs/line-webhook-server.crt:/usr/src/app/cert/line-webhook-server.crt:ro # Mount the bundle as read-only 
+      - ./certs/line-webhook-server.key:/usr/src/app/cert/line-webhook-server.key:ro # Mount the bundle as read-only       
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem      
+    depends_on:
+      proxy-server:
+        condition: service_started
     networks:
       - app-network
 
@@ -79,11 +115,18 @@ services:
     container_name: user-db-api
     ports:
       - "3003:3003"
+    volumes:
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
+      - ./certs/user-db-api.crt:/usr/src/app/cert/user-db-api.crt:ro # Mount the bundle as read-only 
+      - ./certs/user-db-api.key:/usr/src/app/cert/user-db-api.key:ro # Mount the bundle as read-only
+      - ./keys/public-key/user-db-api-public-key.pem:/usr/src/app/public-key/user-db-api-public-key.pem:ro      
     depends_on:
       user-db:
         condition: service_healthy      
     environment:
       - NODE_ENV=production
+      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem
     networks:
       - app-network
 
@@ -104,7 +147,8 @@ services:
       - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/mysql-root-password
       - MYSQL_DATABASE=user_db
       - MYSQL_USER=nakorn
-      - MYSQL_PASSWORD_FILE=/run/secrets/mysql-user-password      
+      - MYSQL_PASSWORD_FILE=/run/secrets/mysql-user-password
+      - TZ=Asia/Bangkok # Replace with your desired timezone
     ports:
       - "3306:3306"
     volumes:

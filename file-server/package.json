@@ -1,7 +1,7 @@
 {
-  "name": "hosxp-api",
+  "name": "protected-file-server",
   "version": "1.0.0",
-  "description": "Link Line account with ProviderId",
+  "description": "protected-file-server",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "express": "^5.1.0",
-    "mysql2": "^3.14.3",
     "jsonwebtoken": "^9.0.2"
   }
 }

@@ -9,14 +9,13 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/protect', express.static(path.join(__dirname, 'protect')));
 app.use('/image', express.static(path.join(__dirname, 'image')));
 
-
 const port = process.env.PORT;
 
 const https = require('https');
 
 const options = {
-  key: fs.readFileSync(path.join(__dirname, "cert", "key.pem")),
-  cert: fs.readFileSync(path.join(__dirname, "cert", "cert.pem")),
+  key: fs.readFileSync(path.join(__dirname, "cert", "line-providerid-link-frontend.key")),
+  cert: fs.readFileSync(path.join(__dirname, "cert", "line-providerid-link-frontend.crt")),
 };
 const server = https.createServer(options, app);
 

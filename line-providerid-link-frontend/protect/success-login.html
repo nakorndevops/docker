@@ -4,13 +4,129 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Success ProviderID Login</title>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #ffffff;
+        }
+
+        .container {
+            display: none;
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 8px;
+            /* Removed border and box-shadow */
+            text-align: center;
+            max-width: 90%;
+            box-sizing: border-box;
+        }
+
+        .success {
+            color: #28a745;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: max-content 1fr;
+            gap: 0.5rem 1rem;
+            text-align: left;
+            margin: 0 auto;
+            width: fit-content;
+            margin-bottom: 2rem;
+            /* Added space for the button */
+        }
+
+        .label {
+            font-weight: bold;
+            text-align: left;
+            color: #333;
+        }
+
+        .value {
+            color: #555;
+            text-align: right;
+        }
+
+        .close-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background-color: #218838;
+        }
+
+        .container-error {
+            display: none;
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            box-sizing: border-box;
+        }
+        .fail {
+            color: #dc3545; /* Red */
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+        .error-message {
+            color: #6c757d; /* Gray */
+            margin-bottom: 1.5rem;
+            font-size: 1.1em;
+        }
+        .close-btn-error {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .close-btn-error:hover {
+            background-color: #5a6268;
+        }
+    </style>
+
 </head>
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
 
 <body>
 
-    <h1 id="showLoginResult"></h1>
+    <div class="container">
+        <h1 class="success">Login Successful</h1>
+        <div class="info-grid">
+            <div class="label">ชื่อ-สกุล</div>
+            <div id="name_th" class="value">สมชาย น้องสมปอง</div>
+            <div class="label">วิชาชีพ</div>
+            <div id="position" class="value">แพทย์</div>
+        </div>
+
+        <button class="close-btn" onclick="closeLiffApp()">Close Window</button>
+    </div>
+
+    <div class="container-error">
+        <h1 class="fail">Login Failed</h1>
+        <p class="error-message">Invalid username or password. Please try again.</p>
+        <button class="close-btn-error" onclick="closeLiffApp()">Close</button>
+    </div>
 
 </body>
 
@@ -130,6 +246,10 @@
         }
     }
 
+    function closeLiffApp() {
+        liff.closeWindow();
+    }
+
     window.onload = async function () {
 
         await initializeLiff("2007923339-6OOe9xPE");
@@ -171,12 +291,16 @@
             // const license_id = loginResult.data.organization[0].license_id;
             // const hname_th = loginResult.data.organization[0].hname_th;
             console.log(loginResult);
-            if(loginResult.Error) {
-                showLoginResult.innerHTML = "Fail Login";
+            console.log(loginResult.status);
+
+            /*
+            if (loginResult.Error) {
+                //showLoginResult.innerHTML = "Fail Login";
             } else {
-                showLoginResult.innerHTML = "Success Login";
+                //showLoginResult.innerHTML = "Success Login";
             }
-            
+            */
+
         }
     };
 

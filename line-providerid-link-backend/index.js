@@ -1,6 +1,8 @@
 import { getAccessToken } from './module/getProviderIdAccessToken.js';
 import { getServiceToken } from './module/getProviderIdServiceToken.js';
 import { getProviderProfile } from './module/getProviderIdProfile.js';
+import { checkActiveUser } from './module/checkActiveUser.js';
+import { createUser } from './module/createUser.js';
 
 import * as fs from "fs";
 
@@ -9,6 +11,9 @@ const client_id = process.env.CLIENT_ID;
 const client_secret = process.env.CLIENT_SECRET;
 const client_id2 = process.env.CLIENT_ID2;
 const client_secret2 = process.env.CLIENT_SECRET2;
+
+const user_db_api_key = process.env.USER_DB_API_KEY;
+const hosxp_api_key = process.env.HOSXP_API_KEY;
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -21,8 +26,8 @@ app.use(express.json());
 
 import * as https from "https";
 const options = {
-  key: fs.readFileSync(path.join(__dirname, "cert", "key.pem")),
-  cert: fs.readFileSync(path.join(__dirname, "cert", "cert.pem")),
+  key: fs.readFileSync(path.join(__dirname, "cert", "line-providerid-link-backend.key")),
+  cert: fs.readFileSync(path.join(__dirname, "cert", "line-providerid-link-backend.crt")),
 };
 const server = https.createServer(options, app);
 
@@ -31,33 +36,34 @@ app.post('/linkAccount', async (req, res) => {
   const providerIdCode = req.body.providerIdCode;
   const redirect_uri = req.body.redirect_uri;
 
-  // Get Access Token
-  const tokenRequestParams = {
-    code: providerIdCode, // This is the temporary code
-    redirect_uri: redirect_uri,    // Must match your registered callback URL
-    client_id: client_id,               // Your app's client ID
-    client_secret: client_secret,       // Your app's client secret
-  };
-
-  console.log(tokenRequestParams);
-
+  let tokenRequestParams;
   let access_token;
   let service_token;
   let profileData;
-  let errorMessage;
+  let license_id;
+  let userStatus;
 
-  if (tokenRequestParams) {
+  // Check if parameter complete
+  if (!client_id) {
+    res.status(500).send("No client ID !");
+  } else if (!LineUserId || !providerIdCode || !redirect_uri) {
+    res.status(400).send("Incomplete request parameter !");
+  } else {
+    // Get Access Token
+    tokenRequestParams = {
+      code: providerIdCode,
+      redirect_uri: redirect_uri,
+      client_id: client_id, 
+      client_secret: client_secret,    
+    };
     try {
       console.log('Attempting to get access token...');
       const tokenData = await getAccessToken(tokenRequestParams);
       access_token = tokenData.data.access_token;
-
       console.log('✅ Successfully retrieved token data:');
-      // Now you can use tokenData.access_token to make authenticated API calls
-
     } catch (error) {
       console.error('🔴 Failed to get access token:', error.message);
-      errorMessage = '🔴 Failed to get access token:';
+      res.status(500).send('Failed to get access token !');
     }
   }
 
@@ -74,11 +80,9 @@ app.post('/linkAccount', async (req, res) => {
       const service_data = await getServiceToken(serviceCredentials);
       service_token = service_data.data.access_token;
       console.log('✅ Successfully received response:');
-      // You can now use the data returned by the API
-
     } catch (error) {
       console.error('🔴 Failed to request service token:', error.message);
-      errorMessage = '🔴 Failed to request service token:';
+      res.status(500).send('Failed to get service token !');
     }
   }
 
@@ -98,19 +102,44 @@ app.post('/linkAccount', async (req, res) => {
 
     } catch (error) {
       console.error('🔴 Failed to fetch provider profile:', error.message);
-      errorMessage = '🔴 Failed to fetch provider profile:';
+      res.status(500).send('Failed to get user profile !');
     }
   }
-  
-  if(profileData) {
-    res.json(profileData);
-  } else {
-    const errorResponse = {
-      Error : errorMessage
-    };
-     res.json(errorResponse);
+
+  if (profileData) {
+    // Check active user status from HOSxP
+    license_id = profileData.data.organization[0].license_id;
+
+    try {
+      console.log(`Checking active user status: ${license_id}...`);
+
+      // Call the imported function
+      userStatus = await checkActiveUser(license_id, hosxp_api_key);
+      console.log('API Response:', userStatus);
+
+    } catch (error) {
+      // This will catch any errors thrown by checkActiveUser
+      console.error('🔴 An error occurred:', error.message);
+      res.status(500).send('Failed to check user status !');
+    }
   }
-  
+
+  if (userStatus) {
+    // User is active
+    try {
+      const result = await createUser(LineUserId, license_id, user_db_api_key);
+      console.log('--- Operation Successful ---');
+      console.log('API Result:', result);
+      res.json(profileData);
+    } catch (error) {
+      console.log('--- Operation Failed ---');
+      console.error('Failed to create user:', error.message);
+      res.status(500).send('Failed to create user !');
+    }
+  } else {
+    // If User is inactive or no user founded
+    res.status(401).send('User is inactive or no user founded !');
+  }
 })
 
 server.listen(port, () => {
