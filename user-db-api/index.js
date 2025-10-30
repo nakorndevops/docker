@@ -137,6 +137,29 @@ app.post("/createUser", verifyToken, async (request, response) => {
   }
 });
 
+// Get license_id from LineUserID
+app.post("/getLicenseIdFromLineUserID", verifyToken, async (request, response) => {
+  console.log(request.body);
+  const LineUserId = request.body.LineUserId;
+
+  if (!LineUserId) {
+    return response.status(400).json({ error: "Incomplete request parameter !" });
+  }
+
+  try {
+    const myQuery = `
+      SELECT license_id
+      FROM user
+      WHERE LineUserId = ?;
+    `;
+    const [result, fields] = await pool.query(myQuery, [LineUserId]);
+    response.status(200).json(result);
+  } catch (err) {
+    console.error(err);
+    response.status(500).send("Error cannot get license_id !");
+  }
+});
+
 server.listen(port, () => {
   console.log(`App listening on PORT: ${port}`);
 });

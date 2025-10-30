@@ -1,14 +1,14 @@
 {
-  "name": "hosxp-api",
+  "name": "logic-server",
   "version": "1.0.0",
-  "description": "Link Line account with ProviderId",
+  "description": "Logic Server",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "@line/bot-sdk": "^10.4.0",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2"
   }
 }

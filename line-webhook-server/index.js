@@ -1,112 +1,82 @@
-import { checkUserExists } from './module/userdb-api-client.js';
-import { LineReply } from './module/sendLineReply.js';
+// --- Standard Library Imports ---
+import fs from "fs";
+import https from "https";
+import path from "path"; // Good for cross-platform path handling
 
-import * as fs from "fs";
-
+// --- Third-Party Imports ---
 import express from "express";
-const app = express();
-app.use(express.json());
+import * as line from "@line/bot-sdk"; // Import the official LINE SDK
 
-import * as https from "https";
-const options = {
-  key: fs.readFileSync("./cert/line-webhook-server.key"),
-  cert: fs.readFileSync("./cert/line-webhook-server.crt"),
+// --- Custom Module Imports ---
+import { createEventHandler } from "./module/eventHandler.js"; // 👈 Import your new handler factory
+
+// --- Environment Variable Validation ---
+const requiredEnv = [
+  "PORT",
+  "LINE_CHANNEL_ACCESS_TOKEN",
+  "LINE_CHANNEL_SECRET",
+  "USER_DB_APIKEY",
+  "HOSXP_APIKEY",
+  "LOGIC_SERVER_APIKEY",
+];
+
+for (const R_env of requiredEnv) {
+  if (!process.env[R_env]) {
+    console.error(`[Fatal Error] Environment variable ${R_env} is not set.`);
+    process.exit(1); // Exit if critical config is missing
+  }
+}
+
+// --- LINE SDK Configuration ---
+const lineConfig = {
+  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
+  channelSecret: process.env.LINE_CHANNEL_SECRET,
 };
+
+// --- App & Server Setup ---
+const app = express();
+const client = new line.Client(lineConfig); // Create LINE client
+
+// --- HTTPS Server Options ---
+// Use path.join for robust file paths
+const options = {
+  key: fs.readFileSync(path.join("./cert", "line-webhook-server.key")),
+  cert: fs.readFileSync(path.join("./cert", "line-webhook-server.crt")),
+};
+
+// --- ✨ Create the Event Handler ✨ ---
+// Pass all the dependencies your logic needs into the factory
+const handleEvent = createEventHandler({
+  client: client,
+  hosxpApiKey: process.env.HOSXP_APIKEY,
+  userDbApiKey: process.env.USER_DB_APIKEY,
+  logicServerApiKey: process.env.LOGIC_SERVER_APIKEY,
+});
+
+// --- Webhook Route ---
+// Use the LINE middleware to handle signature validation and body parsing
+app.post("/chatbot", line.middleware(lineConfig), async (req, res) => {
+  try {
+    // Process all events in the request
+    const events = req.body.events;
+    const results = await Promise.all(events.map(handleEvent));
+
+    // Send a 200 OK to LINE
+    res.status(200).json(results);
+
+  } catch (err) {
+    console.error("Error processing webhook:", err.message, err.stack);
+    // CRITICAL: Always send a 200 OK, even on failure.
+    // Otherwise, LINE will retry and spam your webhook.
+    // Log the error for debugging.
+    res.sendStatus(200);
+  }
+});
+
+// --- Server Start ---
+const port = process.env.PORT;
 const server = https.createServer(options, app);
 
-const port = process.env.PORT;
-const line_access_token = process.env.LINE_ACCESS_TOKEN;
-const hosxp_apikey = process.env.HOSXP_APIKEY;
-const userdb_apikey = process.env.USER_DB_APIKEY;
-
-app.post('/chatbot', async (request, response) => {
-  const LineUserID = request.body.events[0].source.userId;
-  const replyToken = request.body.events[0].replyToken;
-  const userMessage = request.body.events[0].message.text;
-
-  // Check User Exist
-  try {
-    const userExist = await checkUserExists(LineUserID, userdb_apikey);
-
-    // User nor exist Reply 
-    if (!userExist) {
-      // Reply Message to register
-      const replyMessage = [
-        {
-          "type": "flex",
-          "altText": "This is a Flex Message",
-          "contents": {
-            "type": "bubble",
-            "hero": {
-              "type": "box",
-              "layout": "vertical",
-              "contents": [
-                {
-                  "type": "image",
-                  "url": "https://dh.tranghos.moph.go.th/image/provider.png",
-                  "align": "center",
-                  "aspectMode": "fit",
-                  "size": "full"
-                }
-              ],
-              "action": {
-                "type": "uri",
-                "label": "action",
-                "uri": "https://dh.tranghos.moph.go.th/login"
-              }
-            },
-            "body": {
-              "type": "box",
-              "layout": "vertical",
-              "contents": [
-                {
-                  "type": "button",
-                  "action": {
-                    "type": "uri",
-                    "label": "Register with ProviderID",
-                    "uri": "https://dh.tranghos.moph.go.th/login"
-                  },
-                  "style": "primary"
-                }
-              ]
-            },
-            "styles": {
-              "header": {
-                "backgroundColor": "#00B900"
-              }
-            }
-          }
-        }
-      ];
-
-      const dataString = JSON.stringify({
-        replyToken: replyToken,
-        messages: replyMessage
-      });
-      await LineReply(dataString, line_access_token);
-    } else {
-      // If user exist
-      // Check for active user
-    }
-    response.sendStatus(200);
-
-  } catch (error) {
-    console.error("Failed to check user:", error.message);
-    const replyMessage = [
-        {
-          type: "text",
-          text: "Internal server error.",
-        }      
-    ];
-    const dataString = JSON.stringify({
-      replyToken: replyToken,
-      messages: replyMessage
-    });
-    await LineReply(dataString, line_access_token);
-    response.sendStatus(200);
-  }
-})
-
 server.listen(port, () => {
-  console.log(`App listening on PORT: ${port}`);
+  console.log(`✅ App listening on HTTPS PORT: ${port}`);
 });

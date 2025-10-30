@@ -51,7 +51,7 @@ services:
     volumes:
       - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
       - ./certs/line-providerid-link-backend.crt:/usr/src/app/cert/line-providerid-link-backend.crt:ro # Mount the bundle as read-only 
-      - ./certs/line-providerid-link-backend.key:/usr/src/app/cert/line-providerid-link-backend.key:ro # Mount the bundle as read-only   
+      - ./certs/line-providerid-link-backend.key:/usr/src/app/cert/line-providerid-link-backend.key:ro # Mount the bundle as read-only
     environment:
       - NODE_ENV=production
       - TZ=Asia/Bangkok # Replace with your desired timezone
@@ -96,7 +96,30 @@ services:
     volumes:
       - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
       - ./certs/line-webhook-server.crt:/usr/src/app/cert/line-webhook-server.crt:ro # Mount the bundle as read-only 
-      - ./certs/line-webhook-server.key:/usr/src/app/cert/line-webhook-server.key:ro # Mount the bundle as read-only       
+      - ./certs/line-webhook-server.key:/usr/src/app/cert/line-webhook-server.key:ro # Mount the bundle as read-only
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem      
+    depends_on:
+      proxy-server:
+        condition: service_started
+    networks:
+      - app-network
+
+  # Logic Server Service
+  logic-server:
+    build:
+      context: ./logic-server # Path to the Dockerfile and source code
+      dockerfile: Dockerfile
+    container_name: logic-server
+    ports:
+      - "3005:3005"
+    volumes:
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
+      - ./certs/logic-server.crt:/usr/src/app/cert/logic-server.crt:ro # Mount the bundle as read-only 
+      - ./certs/logic-server.key:/usr/src/app/cert/logic-server.key:ro # Mount the bundle as read-only
+      - ./keys/public-key/logic-server-api-public-key.pem:/usr/src/app/public-key/logic-server-api-public-key.pem:ro
     environment:
       - NODE_ENV=production
       - TZ=Asia/Bangkok # Replace with your desired timezone
@@ -116,10 +139,10 @@ services:
     ports:
       - "3003:3003"
     volumes:
-      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
-      - ./certs/user-db-api.crt:/usr/src/app/cert/user-db-api.crt:ro # Mount the bundle as read-only 
-      - ./certs/user-db-api.key:/usr/src/app/cert/user-db-api.key:ro # Mount the bundle as read-only
-      - ./keys/public-key/user-db-api-public-key.pem:/usr/src/app/public-key/user-db-api-public-key.pem:ro      
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro 
+      - ./certs/user-db-api.crt:/usr/src/app/cert/user-db-api.crt:ro  
+      - ./certs/user-db-api.key:/usr/src/app/cert/user-db-api.key:ro 
+      - ./keys/public-key/user-db-api-public-key.pem:/usr/src/app/public-key/user-db-api-public-key.pem:ro
     depends_on:
       user-db:
         condition: service_healthy      
