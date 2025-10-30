@@ -8,7 +8,7 @@
  */
 export function createEventHandler(config) {
   // Destructure the dependencies you need from the config
-  const { client, hosxpApiKey, userDbApiKey, logicServerApiKey } = config;
+  const { client, logicServerApiKey } = config;
 
   // This is the actual event handler logic
   return async function handleEvent(event) {
@@ -34,17 +34,12 @@ export function createEventHandler(config) {
       "LineUserId": LineUserID,
     });
 
-    console.log(sentMessage, LineUserID);
-
     const response = await fetch(url, {
       method: 'POST',
       headers: headers,
       body: body
     });
     const replyMessage = await response.json();
-    console.log('Response Status:', response.status);
-    console.log('Response :', response);
-    console.log('replyMessage :', replyMessage);
 
     try {
       // Use the SDK client (from the config) to reply
