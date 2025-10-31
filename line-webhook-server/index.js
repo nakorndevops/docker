@@ -18,6 +18,9 @@ const requiredEnv = [
   "USER_DB_APIKEY",
   "HOSXP_APIKEY",
   "LOGIC_SERVER_APIKEY",
+  "LOGIC_SERVER_URL",
+  "USERDB_API_URL",
+  "HOSxP_API_URL",
 ];
 
 for (const R_env of requiredEnv) {
@@ -48,10 +51,44 @@ const options = {
 // Pass all the dependencies your logic needs into the factory
 const handleEvent = createEventHandler({
   client: client,
-  hosxpApiKey: process.env.HOSXP_APIKEY,
-  userDbApiKey: process.env.USER_DB_APIKEY,
+  logicServerUrl: process.env.LOGIC_SERVER_URL,
   logicServerApiKey: process.env.LOGIC_SERVER_APIKEY,
+  userdbApiUrl: process.env.USERDB_API_URL,
+  userdbApiKey: process.env.USER_DB_APIKEY,  
 });
+
+/*
+// Verify User Middleware
+const verifyUser = async (request, response, next) => {
+
+  const apiRoute = 'getUser';
+  const apiUrl = process.env.USERDB_API_URL + apiRoute;
+
+  const requestOptions = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.USER_DB_APIKEY}`
+    },
+    body: JSON.stringify({
+      LineUserId: userId
+    })
+  };
+
+  console.log(request.body);
+  console.log(requestOptions.body);
+  console.log(apiUrl);
+
+  const res = await fetch(apiUrl, requestOptions);
+
+  const userStatus = await res.json();
+
+  console.log(userStatus);
+
+  next(); // Pass control to the next handler
+
+};
+*/
 
 // --- Webhook Route ---
 // Use the LINE middleware to handle signature validation and body parsing
