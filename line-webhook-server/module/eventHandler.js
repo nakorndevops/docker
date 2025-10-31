@@ -1,21 +1,59 @@
-// File: eventHandler.js
+// module/eventHandler.js
 
+// Import the new service functions
+import { findUserByLineId } from "../services/userService.js";
+import { checkActiveUser } from "../services/hosxpService.js";
+import { getBotReply } from "../services/logicService.js";
+
+// --- Reply Message Templates ---
+// Store complex replies as constants to keep logic clean
+const registerReply = {
+  type: "flex",
+  altText: "Register with ProviderID",
+  contents: {
+    "type": "bubble",
+    "size": "giga",
+    "hero": {
+      "type": "image",
+      "url": "https://dh.tranghos.moph.go.th/image/provider.png",
+      "size": "full"
+    },
+    "footer": {
+      "type": "box",
+      "layout": "vertical",
+      "contents": [
+        {
+          "type": "button",
+          "action": {
+            "type": "uri",
+            "label": "Register with providerID",
+            "uri": "https://liff.line.me/2008398299-eV59j9Vd"
+          },
+          "style": "primary"
+        }
+      ]
+    }
+  },
+};
+
+const unauthorizedReply = {
+  type: "text",
+  text: "Unauthorized user.",
+};
+
+const errorReply = {
+  type: "text",
+  text: "Sorry, I couldn't process your request right now. Please try again later.",
+};
+
+// --- Factory Function ---
 /**
- * This "factory" function creates the handleEvent function.
- * It receives a config object with dependencies.
+ * Creates the handleEvent function and injects dependencies.
  */
 export function createEventHandler(config) {
-  // Destructure all dependencies, including the new logicServerUrl
-  const { client, logicServerUrl, logicServerApiKey, userdbApiUrl, userdbApiKey } = config;
+  const { client, logicServerUrl, logicServerApiKey, userdbApiUrl, userdbApiKey, hosxpApiUrl, hosxpApiKey } = config;
 
-  // Validate that all required config is present
-  if (!client || !logicServerApiKey || !logicServerUrl) {
-    throw new Error(
-      "Missing required config: client, logicServerApiKey, or logicServerUrl"
-    );
-  }
-
-  // This is the actual event handler logic
+  // This is the actual event handler, now much flatter
   return async function handleEvent(event) {
     // 1. Guard Clause: Ignore non-text messages
     if (event.type !== "message" || event.message.type !== "text") {
@@ -26,110 +64,51 @@ export function createEventHandler(config) {
     const { userId: lineUserId } = event.source;
     const { text: sentMessage } = event.message;
 
-    // VerifyUser
-    const userDbApiRoute = "getUser"
-    const verifyUserRequestOptions = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${userdbApiKey}`
-      },
-      body: JSON.stringify({
-        LineUserId: lineUserId
-      })
-    };
-    const verifyUserResponse = await fetch(userdbApiUrl + userDbApiRoute, verifyUserRequestOptions);
-    const userStatus = await verifyUserResponse.json();
-    console.log(userStatus);
-    if (userStatus.error) {
-      const replyMessage = {
-        "type": "flex",
-        "altText": "Register with ProviderID",
-        "contents": {
-          "type": "bubble",
-          "hero": {
-            "type": "image",
-            "url": "https://dh.tranghos.moph.go.th/image/provider.png",
-            "size": "full"
-          },
-          "footer": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-              {
-                "type": "button",
-                "action": {
-                  "type": "uri",
-                  "label": "Register with providerID",
-                  "uri": "https://liff.line.me/2008398299-eV59j9Vd"
-                },
-                "style": "primary"
-              }
-            ]
-          }
-        }
+    try {
+      // 2. Check if user exists
+      const user = await findUserByLineId(lineUserId, {
+        apiUrl: userdbApiUrl,
+        apiKey: userdbApiKey,
+      });
+
+      // 3. Guard Clause: User not registered
+      if (!user) {
+        return client.replyMessage(replyToken, registerReply);
       }
-      console.log("No user founded: ", lineUserId);
-      await client.replyMessage(replyToken, replyMessage);
 
-    } else {
-      console.log("User founded: ", lineUserId);
+      // 4. Check if user is active/authorized
+      const isAuthorized = await checkActiveUser(user.license_id, {
+        apiUrl: hosxpApiUrl,
+        apiKey: hosxpApiKey,
+      });
+
+      // 5. Guard Clause: User not authorized
+      if (!isAuthorized) {
+        return client.replyMessage(replyToken, unauthorizedReply);
+      }
+
+      // 6. Main Logic: Get and send the bot's reply
+      const replyMessage = await getBotReply(sentMessage, lineUserId, {
+        apiUrl: logicServerUrl,
+        apiKey: logicServerApiKey,
+      });
+
+      return client.replyMessage(replyToken, replyMessage);
+
+    } catch (err) {
+      // 7. Main Error Handling
+      console.error(
+        `Failed to process message for user ${lineUserId}:`,
+        err.message
+      );
       try {
-        // 2. Bot Logic: Call the external logic server
-        const headers = {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${logicServerApiKey}`,
-        };
-
-        const body = JSON.stringify({
-          sentMessage, // Use ES6 shorthand
-          lineUserId,  // Use camelCase
-        });
-
-        const response = await fetch(logicServerUrl, {
-          method: "POST",
-          headers: headers,
-          body: body,
-        });
-
-        // 3. Response Validation: Check for server errors (e.g., 4xx, 5xx)
-        if (!response.ok) {
-          // Log the server error for debugging
-          const errorBody = await response.text();
-          console.error(
-            `Logic server error for user ${lineUserId}: ${response.status} ${response.statusText}`,
-            errorBody
-          );
-          // Throw an error to be caught by the main catch block
-          throw new Error(`Logic server returned status ${response.status}`);
-        }
-
-        // 4. Parse Response and Reply
-        const replyMessage = await response.json();
-        await client.replyMessage(replyToken, replyMessage);
-
-        console.log(`Successfully replied to user ${lineUserId}`);
-
-      } catch (err) {
-        // 5. Main Error Handling: Catch fetch errors, JSON parsing errors, or reply errors
+        // Try to send a generic error reply
+        await client.replyMessage(replyToken, errorReply);
+      } catch (replyError) {
         console.error(
-          `Failed to process message for user ${lineUserId}:`,
-          err.message
+          `Failed to send error reply to token ${replyToken}:`,
+          replyError.message
         );
-
-        // 6. User-Facing Error: Try to send a generic error reply
-        try {
-          await client.replyMessage(replyToken, {
-            type: "text",
-            text: "Sorry, I couldn't process your request right now. Please try again later.",
-          });
-        } catch (replyError) {
-          // If sending the error reply *also* fails, just log it.
-          console.error(
-            `Failed to send error reply to token ${replyToken}:`,
-            replyError.message
-          );
-        }
       }
     }
   };

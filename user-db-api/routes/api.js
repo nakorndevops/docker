@@ -58,7 +58,7 @@ router.post("/createUser", verifyToken, async (request, response) => {
   try {
     const myQuery = `INSERT INTO user (license_id, LineUserId) VALUES (?, ?);`;
     await pool.query(myQuery, [license_id, LineUserId]);
-    response.status(201).json({ success: true, message: "User created successfully." });
+    response.status(200).json({ success: true, message: "User created successfully." });
   } catch (err) {
     console.error("Query Error [/createUser]:", err.message);
     // Handle specific errors, e.g., duplicate entry

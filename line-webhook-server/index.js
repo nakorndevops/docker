@@ -1,119 +1,45 @@
-// --- Standard Library Imports ---
+// index.js
 import fs from "fs";
 import https from "https";
-import path from "path"; // Good for cross-platform path handling
-
-// --- Third-Party Imports ---
+import path from "path";
 import express from "express";
-import * as line from "@line/bot-sdk"; // Import the official LINE SDK
 
 // --- Custom Module Imports ---
-import { createEventHandler } from "./module/eventHandler.js"; // 👈 Import your new handler factory
-
-// --- Environment Variable Validation ---
-const requiredEnv = [
-  "PORT",
-  "LINE_CHANNEL_ACCESS_TOKEN",
-  "LINE_CHANNEL_SECRET",
-  "USER_DB_APIKEY",
-  "HOSXP_APIKEY",
-  "LOGIC_SERVER_APIKEY",
-  "LOGIC_SERVER_URL",
-  "USERDB_API_URL",
-  "HOSxP_API_URL",
-];
-
-for (const R_env of requiredEnv) {
-  if (!process.env[R_env]) {
-    console.error(`[Fatal Error] Environment variable ${R_env} is not set.`);
-    process.exit(1); // Exit if critical config is missing
-  }
-}
-
-// --- LINE SDK Configuration ---
-const lineConfig = {
-  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
-  channelSecret: process.env.LINE_CHANNEL_SECRET,
-};
+import { env } from "./config/env.js"; // Validates and loads envs
+import { client, lineConfig } from "./config/line.js"; // Imports LINE client
+import { createEventHandler } from "./module/eventHandler.js"; // Imports logic factory
+import { createChatbotRouter } from "./routes/chatbot.js"; // Imports router factory
 
 // --- App & Server Setup ---
 const app = express();
-const client = new line.Client(lineConfig); // Create LINE client
 
 // --- HTTPS Server Options ---
-// Use path.join for robust file paths
+const __dirname = path.resolve(path.dirname(""));
 const options = {
-  key: fs.readFileSync(path.join("./cert", "line-webhook-server.key")),
-  cert: fs.readFileSync(path.join("./cert", "line-webhook-server.crt")),
+  key: fs.readFileSync(path.join(__dirname, "./cert/line-webhook-server.key")),
+  cert: fs.readFileSync(path.join(__dirname, "./cert/line-webhook-server.crt")),
 };
 
-// --- ✨ Create the Event Handler ✨ ---
-// Pass all the dependencies your logic needs into the factory
+// --- ✨ Dependency Injection ✨ ---
+// 1. Create the event handler, passing in all its dependencies
 const handleEvent = createEventHandler({
   client: client,
-  logicServerUrl: process.env.LOGIC_SERVER_URL,
-  logicServerApiKey: process.env.LOGIC_SERVER_APIKEY,
-  userdbApiUrl: process.env.USERDB_API_URL,
-  userdbApiKey: process.env.USER_DB_APIKEY,  
+  logicServerUrl: env.logicServerUrl,
+  logicServerApiKey: env.logicServerApiKey,
+  userdbApiUrl: env.userdbApiUrl,
+  userdbApiKey: env.userDbApiKey,
+  hosxpApiUrl: env.hosxpApiUrl,
+  hosxpApiKey: env.hosxpApiKey,
 });
 
-/*
-// Verify User Middleware
-const verifyUser = async (request, response, next) => {
+// 2. Create the router, passing in the handler it needs
+const chatbotRouter = createChatbotRouter(handleEvent, lineConfig);
 
-  const apiRoute = 'getUser';
-  const apiUrl = process.env.USERDB_API_URL + apiRoute;
-
-  const requestOptions = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.USER_DB_APIKEY}`
-    },
-    body: JSON.stringify({
-      LineUserId: userId
-    })
-  };
-
-  console.log(request.body);
-  console.log(requestOptions.body);
-  console.log(apiUrl);
-
-  const res = await fetch(apiUrl, requestOptions);
-
-  const userStatus = await res.json();
-
-  console.log(userStatus);
-
-  next(); // Pass control to the next handler
-
-};
-*/
-
-// --- Webhook Route ---
-// Use the LINE middleware to handle signature validation and body parsing
-app.post("/chatbot", line.middleware(lineConfig), async (req, res) => {
-  try {
-    // Process all events in the request
-    const events = req.body.events;
-    const results = await Promise.all(events.map(handleEvent));
-
-    // Send a 200 OK to LINE
-    res.status(200).json(results);
-
-  } catch (err) {
-    console.error("Error processing webhook:", err.message, err.stack);
-    // CRITICAL: Always send a 200 OK, even on failure.
-    // Otherwise, LINE will retry and spam your webhook.
-    // Log the error for debugging.
-    res.sendStatus(200);
-  }
-});
+// --- Mount Routes ---
+app.use("/", chatbotRouter); // Mount the chatbot routes
 
 // --- Server Start ---
-const port = process.env.PORT;
 const server = https.createServer(options, app);
-
-server.listen(port, () => {
-  console.log(`✅ App listening on HTTPS PORT: ${port}`);
+server.listen(env.port, () => {
+  console.log(`✅ App listening on HTTPS PORT: ${env.port}`);
 });
