@@ -153,36 +153,6 @@
         }
     }
 
-    async function verifyAccessToken(accessToken) {
-        // 1. Validate the input parameter
-        if (!accessToken) {
-            throw new Error('Access token is required for verification.');
-        }
-
-        // 2. Use the URL API for safe query parameter handling
-        const url = new URL('https://api.line.me/oauth2/v2.1/verify');
-        url.searchParams.append('access_token', accessToken);
-
-        try {
-            const response = await fetch(url);
-
-            // 3. Check if the HTTP response status is OK (e.g., 200)
-            if (!response.ok) {
-                // Provide a more detailed error message including the status code
-                throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
-            }
-
-            // 4. Parse the JSON body and return it
-            return await response.json();
-
-        } catch (error) {
-            // 5. Catch network errors and re-throw for the caller to handle
-            console.error('Error verifying access token:', error.message);
-            // Re-throwing the error allows the calling function to handle the failure.
-            throw error;
-        }
-    }
-
     async function getUserProfile(accessToken) {
         const url = 'https://api.line.me/v2/profile';
 
@@ -216,12 +186,17 @@
 
     window.onload = async function () {
 
+        let providerIdLoginUrl = "https://dh.tranghos.moph.go.th/providerid-login";
+
         await initializeLiff("2008398299-eV59j9Vd");
 
-        let lineLoginUrl = "https://dh.tranghos.moph.go.th";
+        // Get providerID Code
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        const providerIdCode = urlParams.get('code');
 
-        if (!liff.isLoggedIn()) {
-            window.location.replace(lineLoginUrl);
+        if (!liff.isLoggedIn() || !providerIdCode) {
+            window.location.replace(providerIdLoginUrl);
         } else {
 
             const successRegistration = document.getElementById("successRegistration");
@@ -236,19 +211,14 @@
             // Get Access Token
             const accessToken = await liff.getAccessToken();
 
-            // Get User Profile
+            // Get Line User Profile
             const lineUserProfile = await getUserProfile(accessToken);
             const LineUserId = lineUserProfile.userId;
-
-            // Get providerID Code
-            const queryString = window.location.search;
-            const urlParams = new URLSearchParams(queryString);
-            const providerIdCode = urlParams.get('code');
 
             // Get currentUrl
             const currentUrl = window.location.href.split('?')[0];
 
-            const endpointUrl = 'https://dh.tranghos.moph.go.th/line-providerid-link-backend/linkAccount';
+            const endpointUrl = 'https://dh.tranghos.moph.go.th/backend/linkAccount';
 
             // Prepare the data to be sent in the request body
             const requestData = {

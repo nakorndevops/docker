@@ -1,9 +1,8 @@
 {
-  "name": "line-providerid-link-backend",
+  "name": "line-providerid-link-frontend",
   "version": "1.0.0",
   "description": "Link Line account with ProviderId",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "start": "node index.js"
   },

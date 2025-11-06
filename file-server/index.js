@@ -5,8 +5,6 @@ const fs = require('fs');
 const express = require('express');
 const app = express();
 app.use(express.json());
-app.use('/public', express.static(path.join(__dirname, 'public')));
-app.use('/protect', express.static(path.join(__dirname, 'protect')));
 app.use('/image', express.static(path.join(__dirname, 'image')));
 
 const port = process.env.PORT;
@@ -14,8 +12,8 @@ const port = process.env.PORT;
 const https = require('https');
 
 const options = {
-  key: fs.readFileSync(path.join(__dirname, "cert", "line-providerid-link-frontend.key")),
-  cert: fs.readFileSync(path.join(__dirname, "cert", "line-providerid-link-frontend.crt")),
+  key: fs.readFileSync(path.join(__dirname, "cert", "file-server.key")),
+  cert: fs.readFileSync(path.join(__dirname, "cert", "file-server.crt")),
 };
 const server = https.createServer(options, app);
 

@@ -48,7 +48,7 @@ const verifyToken = (request, response, next) => {
 };
 
 app.post("/", verifyToken, async (request, response) => {
-  console.log(request.body);
+  console.log(request.body.sentMessage);
   const replyMessage = {
     type: "text",
     text: "Hello World!", 

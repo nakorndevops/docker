@@ -5,7 +5,7 @@ import * as userService from "../services/userService.js";
 
 // This "factory" function creates the handler and injects the config
 export function createLinkAccountHandler(env) {
-  
+
   // This is the actual route handler logic
   return async (req, res) => {
     const { LineUserId, providerIdCode, redirect_uri } = req.body;
@@ -52,9 +52,17 @@ export function createLinkAccountHandler(env) {
       };
       const profileData = await mophIdService.getProviderProfile(apiCreds);
       const license_id = profileData.data.organization[0].license_id;
+      const hcode = profileData.data.organization[0].hcode;
       console.log('✅ Successfully fetched profile data.');
 
-      // 5. Check Authorization (Guard Clause)
+      // 5. Check HCODE
+      if (hcode != env.hospitalCode) {
+        console.warn(`🔴 Authorization failed due to mismatch hospital code ${hcode}`);
+        return res.status(403).json({ error: 'Unauthorized. Mismatch hospital code.' });
+      }
+      console.log('✅ Hcode matched.');
+
+      // 6. Check Authorization (Guard Clause)
       console.log('Checking user authorization...');
       const isAuthorized = await hosxpService.checkActiveUser({
         license_id: license_id,
@@ -69,7 +77,7 @@ export function createLinkAccountHandler(env) {
       }
       console.log('✅ User is authorized.');
 
-      // 6. Create User
+      // 7. Create User
       console.log('Creating user in database...');
       const createUserResult = await userService.createUser({
         license_id: license_id,
@@ -79,18 +87,18 @@ export function createLinkAccountHandler(env) {
       });
       console.log('✅ User created successfully:', createUserResult);
 
-      // 7. Success Response
+      // 8. Success Response
       res.status(200).json(profileData); // Send back the profile on success
 
     } catch (error) {
-      // 8. Global Error Handling
+      // 9. Global Error Handling
       console.error('🔴 Failed to link account:', error.message);
-      
+
       // Send specific error for duplicate user
       if (error.message.includes('User already exists')) {
         return res.status(409).json({ error: 'User already exists.' });
       }
-      
+
       // Send a generic error to the client
       res.status(500).json({ error: `An error occurred: ${error.message}` });
     }

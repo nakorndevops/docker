@@ -11,6 +11,7 @@ const requiredEnv = [
   "HOSXP_API_KEY",
   "USERDB_API_URL",
   "HOSxP_API_URL",
+  "HCODE",
 ];
 
 // Validate
@@ -33,4 +34,5 @@ export const env = {
   hosxpApiKey: process.env.HOSXP_API_KEY,
   userdbApiUrl: process.env.USERDB_API_URL,
   hosxpApiUrl: process.env.HOSxP_API_URL,
+  hospitalCode: process.env.HCODE,
 };

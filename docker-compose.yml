@@ -18,18 +18,18 @@ services:
     networks:
       - app-network
 
-  # Node.js frontend Server Service
-  line-providerid-link-frontend:
+  # Node.js Register Service
+  register-frontend:
     build:
-      context: ./line-providerid-link-frontend # Path to the Dockerfile and source code
+      context: ./register-frontend # Path to the Dockerfile and source code
       dockerfile: Dockerfile
-    container_name: line-providerid-link-frontend
+    container_name: register-frontend
     ports:
       - "3000:3000"
     volumes:
       - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
-      - ./certs/line-providerid-link-frontend.crt:/usr/src/app/cert/line-providerid-link-frontend.crt:ro # Mount the bundle as read-only 
-      - ./certs/line-providerid-link-frontend.key:/usr/src/app/cert/line-providerid-link-frontend.key:ro # Mount the bundle as read-only      
+      - ./certs/register-frontend.crt:/usr/src/app/cert/register-frontend.crt:ro # Mount the bundle as read-only 
+      - ./certs/register-frontend.key:/usr/src/app/cert/register-frontend.key:ro # Mount the bundle as read-only      
     environment:
       - NODE_ENV=production
       - TZ=Asia/Bangkok # Replace with your desired timezone
@@ -40,18 +40,18 @@ services:
     networks:
       - app-network
 
-  # Node.js backend Server Service
-  line-providerid-link-backend:
+  # Node.js backend Service
+  backend-for-frontend:
     build:
-      context: ./line-providerid-link-backend # Path to the Dockerfile and source code
+      context: ./backend-for-frontend # Path to the Dockerfile and source code
       dockerfile: Dockerfile
-    container_name: line-providerid-link-backend
+    container_name: backend-for-frontend
     ports:
       - "3002:3002"
     volumes:
       - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
-      - ./certs/line-providerid-link-backend.crt:/usr/src/app/cert/line-providerid-link-backend.crt:ro # Mount the bundle as read-only 
-      - ./certs/line-providerid-link-backend.key:/usr/src/app/cert/line-providerid-link-backend.key:ro # Mount the bundle as read-only
+      - ./certs/backend-for-frontend.crt:/usr/src/app/cert/backend-for-frontend.crt:ro # Mount the bundle as read-only 
+      - ./certs/backend-for-frontend.key:/usr/src/app/cert/backend-for-frontend.key:ro # Mount the bundle as read-only
     environment:
       - NODE_ENV=production
       - TZ=Asia/Bangkok # Replace with your desired timezone
@@ -150,6 +150,28 @@ services:
       - NODE_ENV=production
       - TZ=Asia/Bangkok # Replace with your desired timezone
       - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem
+    networks:
+      - app-network
+
+  # File Server Service
+  file-server:
+    build:
+      context: ./file-server # Path to the Dockerfile and source code
+      dockerfile: Dockerfile
+    container_name: file-server
+    ports:
+      - "3006:3006"
+    volumes:
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
+      - ./certs/file-server.crt:/usr/src/app/cert/file-server.crt:ro # Mount the bundle as read-only 
+      - ./certs/file-server.key:/usr/src/app/cert/file-server.key:ro # Mount the bundle as read-only
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem      
+    depends_on:
+      proxy-server:
+        condition: service_started
     networks:
       - app-network
 
