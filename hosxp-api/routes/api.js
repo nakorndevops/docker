@@ -8,14 +8,15 @@ const router = express.Router();
 // หาคนไข้ตาม ward
 router.post("/ward", verifyToken, async (request, response) => {
   try {
-    const { license } = request.body; // Using object destructuring
-    if (!license) {
+    const { license_id } = request.body; // Using object destructuring
+    if (!license_id) {
       return response.status(400).send("License number is required");
     }
 
     // NOTE: You could now also use `request.user.license` if the license
     // is part of your JWT payload, passed from the middleware.
 
+    const licenseno = "_" + license_id;
     const myQuery = `
       SELECT
           w.name AS ward_name     
@@ -26,13 +27,21 @@ router.post("/ward", verifyToken, async (request, response) => {
       INNER JOIN
           ward AS w ON ast.ward = w.ward
       WHERE
-          d.licenseno  = ?
+          d.licenseno LIKE ?
+          AND d.position_id = 1
           AND ast.dchdate IS NULL 
       GROUP BY ward_name       
     `;
 
-    const [result] = await pool.query(myQuery, [license]);
-    response.json(result); // Use .json for sending JSON data
+    const [result] = await pool.query(myQuery, [licenseno]);
+    const count = result.length;
+    if (!count) {
+      response.send("No patient founded");
+    } else {
+      const namesArray = result.map(item => item.ward_name);
+      const resultString = namesArray.join('\n\n');
+      response.json(resultString); 
+    }
   } catch (err) {
     console.error("Query Error [/ward]:", err.message);
     response.status(500).send("Error executing query");

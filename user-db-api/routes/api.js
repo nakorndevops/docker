@@ -49,7 +49,6 @@ router.post("/listUser", verifyToken, async (request, response) => {
 // Create User
 router.post("/createUser", verifyToken, async (request, response) => {
   const { license_id, LineUserId } = request.body;
-  console.log(request.body);
 
   if (!license_id || !LineUserId) {
     return response.status(400).json({ error: "Incomplete request parameters: license_id and LineUserId are required." });

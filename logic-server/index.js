@@ -3,6 +3,10 @@ import jwt from "jsonwebtoken";
 import * as fs from "fs";
 
 const port = process.env.PORT;
+const userDbApiUrl = process.env.USERDB_API_URL;
+const hosxpApiUrl = process.env.HOSxP_API_URL;
+const userDbApiKey = process.env.USER_DB_API_KEY;
+const hosxpApiKey = process.env.HOSXP_API_KEY;
 
 import express from "express";
 const app = express();
@@ -48,11 +52,60 @@ const verifyToken = (request, response, next) => {
 };
 
 app.post("/", verifyToken, async (request, response) => {
-  console.log(request.body.sentMessage);
+
+  let replyText;
+
+  const { sentMessage, lineUserId } = request.body;
+  const modifiedsentMessage = sentMessage.toLowerCase().replace(/\s/g, '');
+
+  if (modifiedsentMessage === "ward") {
+
+    // 1. Get license_id
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${userDbApiKey}`,
+    };
+
+    const body = JSON.stringify({
+      LineUserId: lineUserId,
+    });
+
+    const apiResponse = await fetch(userDbApiUrl+"/getUser", {
+      method: "POST",
+      headers: headers,
+      body: body,
+    });
+    const data = await apiResponse.json();
+    const license_id = data.license_id;
+
+    // 2. Get ward list
+
+    const headersWardList = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${hosxpApiKey}`,
+    };
+
+    const bodyWardList = JSON.stringify({
+      license_id: license_id,
+    });
+
+    const wardResponse = await fetch(hosxpApiUrl+"/ward", {
+      method: "POST",
+      headers: headersWardList,
+      body: bodyWardList,
+    });
+    const ward = await wardResponse.json();
+
+    replyText = ward;
+  } else {
+    replyText = "Hello World!";
+  }
+
   const replyMessage = {
     type: "text",
-    text: "Hello World!", 
+    text: replyText,
   };
+
   response.json(replyMessage);
 });
 
