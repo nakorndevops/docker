@@ -46,6 +46,24 @@ router.post("/listUser", verifyToken, async (request, response) => {
   }
 });
 
+// Unlink User
+router.post("/unlink", verifyToken, async (request, response) => {
+  const { LineUserId } = request.body;
+  if (!LineUserId) {
+    return response.status(400).json({ error: "LineUserId is required" });
+  }
+
+  try {
+    const myQuery = `DELETE FROM user WHERE LineUserId = ?;`;
+    const [result] = await pool.query(myQuery, [LineUserId]);
+    console.log("Unlink success");
+    response.json({unlinkResult: "Your Line account was unlinked from service"});
+  } catch (err) {
+    console.error("Query Error [/unlink]:", err.message);
+    response.status(500).json({ error: "Error executing query" });
+  }
+});
+
 // Create User
 router.post("/createUser", verifyToken, async (request, response) => {
   const { license_id, LineUserId } = request.body;

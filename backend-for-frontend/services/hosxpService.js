@@ -25,6 +25,7 @@ export async function checkActiveUser({ license_id, apiUrl, apiKey }) {
     }
     const authorizedStatus = await response.json(); // Expects 1 or 0
     return !!authorizedStatus; // Convert 1/0 to true/false
+    // return !!authorizedStatus.message; 
   } catch (error) {
     console.error('Error in checkActiveUser service:', error.message);
     throw new Error('Failed to check user authorization.');

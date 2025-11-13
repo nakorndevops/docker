@@ -51,16 +51,123 @@ const verifyToken = (request, response, next) => {
   }
 };
 
-app.post("/", verifyToken, async (request, response) => {
+let license_id;
+
+const manual = {
+  type: "flex",
+  altText: "Register with ProviderID",
+  contents: {
+    "type": "bubble",
+    "header": {
+      "type": "box",
+      "layout": "vertical",
+      "contents": [
+        {
+          "type": "text",
+          "text": "Manual",
+          "weight": "bold"
+        },
+        {
+          "type": "text",
+          "text": "hello, world",
+          "contents": [
+            {
+              "type": "span",
+              "text": "ward  ",
+              "weight": "bold"
+            },
+            {
+              "type": "span",
+              "text": "(แสดง ward ที่มีคนไข้อยู่)"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "hello, world",
+          "contents": [
+            {
+              "type": "span",
+              "text": "unlink ",
+              "weight": "bold"
+            },
+            {
+              "type": "span",
+              "text": "(ยกเลิกการใช้งาน)"
+            }
+          ]
+        }
+      ]
+    }
+  },
+};
+
+// Get license_id Middleware
+const getLicenseId = async (request, response, next) => {
+  // 1. Get license_id
+  const { lineUserId } = request.body;
+
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${userDbApiKey}`,
+  };
+
+  const body = JSON.stringify({
+    LineUserId: lineUserId,
+  });
+
+  const apiResponse = await fetch(userDbApiUrl + "/getUser", {
+    method: "POST",
+    headers: headers,
+    body: body,
+  });
+  const data = await apiResponse.json();
+  license_id = data.license_id;
+  next();
+}
+
+app.post("/", verifyToken, getLicenseId, async (request, response) => {
 
   let replyText;
 
+  let replyMessage;
+
   const { sentMessage, lineUserId } = request.body;
+
   const modifiedsentMessage = sentMessage.toLowerCase().replace(/\s/g, '');
 
   if (modifiedsentMessage === "ward") {
+    // Get ward list
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${hosxpApiKey}`,
+    };
 
-    // 1. Get license_id
+    const body = JSON.stringify({
+      license_id: license_id,
+    });
+
+    const wardResponse = await fetch(hosxpApiUrl + "/ward", {
+      method: "POST",
+      headers: headers,
+      body: body,
+    });
+
+    const wardReply = await wardResponse.json();
+
+    if (wardResponse.status == 200) {
+      replyText = wardReply.wardList;
+    } else {
+      replyText = wardReply.error;
+    }
+
+    replyMessage = {
+      type: "text",
+      text: replyText,
+    };
+
+  } else if (modifiedsentMessage === "unlink") {
+
     const headers = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${userDbApiKey}`,
@@ -70,41 +177,29 @@ app.post("/", verifyToken, async (request, response) => {
       LineUserId: lineUserId,
     });
 
-    const apiResponse = await fetch(userDbApiUrl+"/getUser", {
+    const unlinkResponse = await fetch(userDbApiUrl + "/unlink", {
       method: "POST",
       headers: headers,
       body: body,
     });
-    const data = await apiResponse.json();
-    const license_id = data.license_id;
 
-    // 2. Get ward list
+    const unlinkReply = await unlinkResponse.json();
+    console.log(unlinkReply);
 
-    const headersWardList = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${hosxpApiKey}`,
-    };
+    if (unlinkResponse.status == 200) {
+      replyText = unlinkReply.unlinkResult;
+    } else {
+      replyText = unlinkReply.error;
+    }
 
-    const bodyWardList = JSON.stringify({
-      license_id: license_id,
-    });
+    replyMessage = {
+      type: "text",
+      text: replyText,
+    };    
 
-    const wardResponse = await fetch(hosxpApiUrl+"/ward", {
-      method: "POST",
-      headers: headersWardList,
-      body: bodyWardList,
-    });
-    const ward = await wardResponse.json();
-
-    replyText = ward;
   } else {
-    replyText = "Hello World!";
+    replyMessage = manual;
   }
-
-  const replyMessage = {
-    type: "text",
-    text: replyText,
-  };
 
   response.json(replyMessage);
 });

@@ -10,7 +10,7 @@ router.post("/ward", verifyToken, async (request, response) => {
   try {
     const { license_id } = request.body; // Using object destructuring
     if (!license_id) {
-      return response.status(400).send("License number is required");
+      return response.status(400).json({ error:"License number is required" });
     }
 
     // NOTE: You could now also use `request.user.license` if the license
@@ -36,15 +36,15 @@ router.post("/ward", verifyToken, async (request, response) => {
     const [result] = await pool.query(myQuery, [licenseno]);
     const count = result.length;
     if (!count) {
-      response.send("No patient founded");
+      response.status(200).json({ wardList: "No patient founded" });
     } else {
       const namesArray = result.map(item => item.ward_name);
       const resultString = namesArray.join('\n\n');
-      response.json(resultString); 
+      response.status(200).json({ wardList: resultString }); 
     }
   } catch (err) {
     console.error("Query Error [/ward]:", err.message);
-    response.status(500).send("Error executing query");
+    response.status(500).json({ error: "Error executing query" });
   }
 });
 
@@ -53,7 +53,7 @@ router.post("/checkActiveUser", verifyToken, async (request, response) => {
   try {
     const { license_id } = request.body;
     if (!license_id) {
-      return response.status(400).send("License number is required");
+      return response.status(400).json({ error:"License number is required" });
     }
 
     const licenseno = "_" + license_id;
@@ -72,7 +72,7 @@ router.post("/checkActiveUser", verifyToken, async (request, response) => {
     response.json(result[0].is_active_user);
   } catch (err) {
     console.error("Query Error [/checkActiveUser]:", err.message);
-    response.status(500).send("Error executing query");
+    response.status(500).json({ error:"Error executing query" });
   }
 });
 
