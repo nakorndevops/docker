@@ -10,7 +10,7 @@ router.post("/ward", verifyToken, async (request, response) => {
   try {
     const { license_id } = request.body; // Using object destructuring
     if (!license_id) {
-      return response.status(400).json({ error:"License number is required" });
+      return response.status(400).json({ error: "License number is required" });
     }
 
     // NOTE: You could now also use `request.user.license` if the license
@@ -21,16 +21,16 @@ router.post("/ward", verifyToken, async (request, response) => {
       SELECT
           w.name AS ward_name     
       FROM
-          an_stat AS ast
+          ipt AS i
       INNER JOIN
-          doctor AS d ON ast.dx_doctor = d.code 
+          doctor AS d ON i.incharge_doctor = d.code 
       INNER JOIN
-          ward AS w ON ast.ward = w.ward
+          ward AS w ON i.ward = w.ward
       WHERE
           d.licenseno LIKE ?
           AND d.position_id = 1
-          AND ast.dchdate IS NULL 
-      GROUP BY ward_name       
+          AND i.dchdate IS NULL 
+      GROUP BY ward_name
     `;
 
     const [result] = await pool.query(myQuery, [licenseno]);
@@ -40,7 +40,7 @@ router.post("/ward", verifyToken, async (request, response) => {
     } else {
       const namesArray = result.map(item => item.ward_name);
       const resultString = namesArray.join('\n\n');
-      response.status(200).json({ wardList: resultString }); 
+      response.status(200).json({ wardList: resultString });
     }
   } catch (err) {
     console.error("Query Error [/ward]:", err.message);
@@ -53,7 +53,7 @@ router.post("/checkActiveUser", verifyToken, async (request, response) => {
   try {
     const { license_id } = request.body;
     if (!license_id) {
-      return response.status(400).json({ error:"License number is required" });
+      return response.status(400).json({ error: "License number is required" });
     }
 
     const licenseno = "_" + license_id;
@@ -69,10 +69,11 @@ router.post("/checkActiveUser", verifyToken, async (request, response) => {
 
     const [result] = await pool.query(myQuery, [licenseno]);
     // Send the boolean value (0 or 1) directly
-    response.json(result[0].is_active_user);
+    const status = result[0].is_active_user;
+    response.json({ status: !!status });
   } catch (err) {
     console.error("Query Error [/checkActiveUser]:", err.message);
-    response.status(500).json({ error:"Error executing query" });
+    response.status(500).json({ error: "Error executing query" });
   }
 });
 

@@ -17,7 +17,7 @@ export async function createUser({ license_id, LineUserId, apiUrl, apiKey }) {
 
   try {
     const response = await fetch(apiUrl + "/createUser", createUserOptions);
-    
+
     // Check for 409 Conflict (Duplicate User) specifically
     if (response.status === 409) {
       throw new Error('User already exists.');
@@ -50,7 +50,7 @@ export async function checkUserExists({ LineUserId, apiUrl, apiKey }) {
 
   try {
     const response = await fetch(apiUrl + "/checkUserExist", requestOptions);
-    
+
     let responseData;
     try {
       // Try to parse JSON, even on an error status (e.g., 400, 500)
@@ -63,7 +63,7 @@ export async function checkUserExists({ LineUserId, apiUrl, apiKey }) {
       // Return the original status or 502 (Bad Gateway) if parsing failed
       return { status: response.status || 502, data: responseData };
     }
-    
+
     // Return both the status and the parsed data
     return { status: response.status, data: responseData };
 
@@ -72,5 +72,52 @@ export async function checkUserExists({ LineUserId, apiUrl, apiKey }) {
     console.error('Error in checkUserExists service:', error.message);
     // Throw a specific error for the controller to catch
     throw new Error('Service unavailable. Could not connect to user database.');
+  }
+}
+
+/**
+ * Checks if the license has reached its device usage limit.
+ * @returns {Promise<boolean>} True if limit reached/exceeded, False otherwise.
+ */
+export async function isDeviceLimitReached({ license_id, apiUrl, apiKey }) {
+  // 1. Basic Input Validation
+  if (!license_id || !apiUrl || !apiKey) {
+    throw new Error("Missing required parameters: license_id, apiUrl, or apiKey");
+  }
+
+  // Use the URL constructor to safely build the URL
+  // This prevents issues if apiUrl has or doesn't have a trailing slash
+  const url = new URL("/deviceStatus", apiUrl);
+
+  try {
+    const response = await fetch(url.href, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ license_id }),
+    });
+
+    // 2. Check for HTTP errors (404, 500, 401, etc.)
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // 3. Safety check to ensure the API returned the expected fields
+    if (typeof data.deviceUsed === 'undefined' || typeof data.deviceLimit === 'undefined') {
+      throw new Error("Invalid API response: missing device usage data");
+    }
+
+    return data.deviceUsed >= data.deviceLimit;
+
+  } catch (error) {
+    // 4. Log the error for debugging
+    console.error("Failed to check device status:", error.message);
+    // Rethrow so the calling function knows something went wrong, 
+    // or return a default safe value (like true) depending on your security needs.
+    throw error;
   }
 }

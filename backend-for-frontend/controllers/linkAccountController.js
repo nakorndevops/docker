@@ -56,13 +56,27 @@ export function createLinkAccountHandler(env) {
       console.log('✅ Successfully fetched profile data.');
 
       // 5. Check HCODE
+      console.log('Checking Hcode...');
       if (hcode != env.hospitalCode) {
         console.warn(`🔴 Authorization failed due to mismatch hospital code ${hcode}`);
         return res.status(403).json({ error: 'Unauthorized. Mismatch hospital code.' });
       }
       console.log('✅ Hcode matched.');
 
-      // 6. Check Authorization (Guard Clause)
+      // 6. Check Device limit
+      console.log('Checking device number...');
+      const isExceed = await userService.isDeviceLimitReached({
+        license_id: license_id,
+        apiUrl: env.userdbApiUrl,
+        apiKey: env.userDbApiKey,
+      });
+      if(isExceed) {
+        return res.status(401).json({ error: '🔴 You are reach device limit.' });
+      } else {
+        console.log('✅ Device not exceed limit');
+      }
+
+      // 7. Check Authorization (Guard Clause)
       console.log('Checking user authorization...');
       const isAuthorized = await hosxpService.checkActiveUser({
         license_id: license_id,
@@ -77,7 +91,7 @@ export function createLinkAccountHandler(env) {
       }
       console.log('✅ User is authorized.');
 
-      // 7. Create User
+      // 8. Create User
       console.log('Creating user in database...');
       const createUserResult = await userService.createUser({
         license_id: license_id,
@@ -87,11 +101,11 @@ export function createLinkAccountHandler(env) {
       });
       console.log('✅ User created successfully:', createUserResult);
 
-      // 8. Success Response
+      // 9. Success Response
       res.status(200).json(profileData); // Send back the profile on success
 
     } catch (error) {
-      // 9. Global Error Handling
+      // 10. Global Error Handling
       console.error('🔴 Failed to link account:', error.message);
 
       // Send specific error for duplicate user

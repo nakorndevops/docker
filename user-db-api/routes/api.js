@@ -6,6 +6,10 @@ import { checkExist } from "../utils/dbHelpers.js"; // Note the new path
 
 const router = express.Router();
 
+// --- Configuration ---
+// Read the limit from .env, parse it to an integer, or default to 2
+const deviceLimit = parseInt(process.env.DEVICE_LIMIT);
+
 // SHOW DB (Example: DESCRIBE user)
 router.post("/", verifyToken, async (request, response) => {
   try {
@@ -108,6 +112,16 @@ router.post("/getUser", verifyToken, async (request, response) => {
     console.error("Query Error [/getLicenseIdFromLineUserID]:", err.message);
     response.status(500).json({ error: "Error retrieving license_id." });
   }
+});
+
+// Device Status
+router.post("/deviceStatus", verifyToken, async (request, response) => {
+    let reply;
+    const { license_id } = request.body;
+    const myQuery = `SELECT COUNT(LineUserId) AS deviceUsed FROM user WHERE license_id = ?;`
+    const [result] = await pool.query(myQuery, [license_id]);
+    const deviceUsed = result[0].deviceUsed;
+    response.status(200).json( {deviceUsed: deviceUsed, deviceLimit: deviceLimit} );
 });
 
 export default router;
