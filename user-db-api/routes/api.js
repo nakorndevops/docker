@@ -10,18 +10,6 @@ const router = express.Router();
 // Read the limit from .env, parse it to an integer, or default to 2
 const deviceLimit = parseInt(process.env.DEVICE_LIMIT);
 
-// SHOW DB (Example: DESCRIBE user)
-router.post("/", verifyToken, async (request, response) => {
-  try {
-    const myQuery = `DESCRIBE user;`;
-    const [result] = await pool.query(myQuery);
-    response.json(result);
-  } catch (err) {
-    console.error("Query Error [/]:", err.message);
-    response.status(500).json({ error: "Error executing query" });
-  }
-});
-
 // Check User Exist
 router.post("/checkUserExist", verifyToken, async (request, response) => {
   const { LineUserId } = request.body;
@@ -35,18 +23,6 @@ router.post("/checkUserExist", verifyToken, async (request, response) => {
   } catch (error) {
     console.error("Critical error in /checkUserExist:", error.message);
     response.status(500).json({ error: "An internal server error occurred." });
-  }
-});
-
-// List User
-router.post("/listUser", verifyToken, async (request, response) => {
-  try {
-    const myQuery = `SELECT * FROM user;`;
-    const [result] = await pool.query(myQuery);
-    response.json(result);
-  } catch (err) {
-    console.error("Query Error [/listUser]:", err.message);
-    response.status(500).json({ error: "Error executing query" });
   }
 });
 
@@ -114,9 +90,8 @@ router.post("/getUser", verifyToken, async (request, response) => {
   }
 });
 
-// Device Status
+// Current Registered Device
 router.post("/deviceStatus", verifyToken, async (request, response) => {
-    let reply;
     const { license_id } = request.body;
     const myQuery = `SELECT COUNT(LineUserId) AS deviceUsed FROM user WHERE license_id = ?;`
     const [result] = await pool.query(myQuery, [license_id]);

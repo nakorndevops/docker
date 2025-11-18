@@ -77,6 +77,8 @@ router.post("/checkActiveUser", verifyToken, async (request, response) => {
   }
 });
 
+
+// ICU BED Status
 router.post("/icuBedStatus", verifyToken, async (request, response) => {
   try {
     const myQuery = `

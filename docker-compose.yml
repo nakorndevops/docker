@@ -84,7 +84,29 @@ services:
       proxy-server:
         condition: service_started
     networks:
-      - app-network      
+      - app-network
+
+  # Node.js backend Service
+  icu-backend:
+    build:
+      context: ./icu-backend # Path to the Dockerfile and source code
+      dockerfile: Dockerfile
+    container_name: icu-backend
+    ports:
+      - "3009:3009"
+    volumes:
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
+      - ./certs/icu-backend.crt:/usr/src/app/cert/icu-backend.crt:ro # Mount the bundle as read-only 
+      - ./certs/icu-backend.key:/usr/src/app/cert/icu-backend.key:ro # Mount the bundle as read-only
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem
+    depends_on:
+      proxy-server:
+        condition: service_started
+    networks:
+      - app-network           
 
   # HOSxP API Server Service
   hosxp-api:
