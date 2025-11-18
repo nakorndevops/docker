@@ -42,17 +42,17 @@ services:
       - app-network
 
   # Node.js backend Service
-  backend-for-frontend:
+  register-backend:
     build:
-      context: ./backend-for-frontend # Path to the Dockerfile and source code
+      context: ./register-backend # Path to the Dockerfile and source code
       dockerfile: Dockerfile
-    container_name: backend-for-frontend
+    container_name: register-backend
     ports:
       - "3002:3002"
     volumes:
       - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
-      - ./certs/backend-for-frontend.crt:/usr/src/app/cert/backend-for-frontend.crt:ro # Mount the bundle as read-only 
-      - ./certs/backend-for-frontend.key:/usr/src/app/cert/backend-for-frontend.key:ro # Mount the bundle as read-only
+      - ./certs/register-backend.crt:/usr/src/app/cert/register-backend.crt:ro # Mount the bundle as read-only 
+      - ./certs/register-backend.key:/usr/src/app/cert/register-backend.key:ro # Mount the bundle as read-only
     environment:
       - NODE_ENV=production
       - TZ=Asia/Bangkok # Replace with your desired timezone
@@ -182,18 +182,18 @@ services:
     container_name: user-db
     restart: always
     healthcheck:
-      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 --password="$$(cat /run/secrets/mysql-root-password)" --silent']
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 --password="$$(cat /run/secrets/user-mysql-root-password)" --silent']
       interval: 3s
       retries: 5
       start_period: 30s
     secrets:
-      - mysql-root-password
-      - mysql-user-password
+      - user-mysql-root-password
+      - user-mysql-user-password
     environment:
-      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/mysql-root-password
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/user-mysql-root-password
       - MYSQL_DATABASE=user_db
       - MYSQL_USER=nakorn
-      - MYSQL_PASSWORD_FILE=/run/secrets/mysql-user-password
+      - MYSQL_PASSWORD_FILE=/run/secrets/user-mysql-user-password
       - TZ=Asia/Bangkok # Replace with your desired timezone
     ports:
       - "3306:3306"
@@ -204,25 +204,55 @@ services:
     networks:
       - app-network
 
+
+  # ICU DB MySQL Server
+  icu-db:
+    image: mysql:9
+    container_name: icu-db
+    restart: always
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 --password="$$(cat /run/secrets/icu-mysql-root-password)" --silent']
+      interval: 3s
+      retries: 5
+      start_period: 30s
+    secrets:
+      - icu-mysql-root-password
+      - icu-mysql-user-password
+    environment:
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/icu-mysql-root-password
+      - MYSQL_DATABASE=icu_db
+      - MYSQL_USER=nakorn
+      - MYSQL_PASSWORD_FILE=/run/secrets/icu-mysql-user-password
+      - TZ=Asia/Bangkok # Replace with your desired timezone
+    ports:
+      - "3307:3307"
+    volumes:
+      - ./icu-db/my.cnf:/etc/mysql/my.cnf
+      - ./icu-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - icu-data:/var/lib/mysql
+    networks:
+      - app-network
+
+
 networks:
   app-network:
     name: app-network
-    driver: bridge
-  db-network:
-    name: db-network
-    driver: bridge
-  api-network:
-    name: api-network
     driver: bridge
 
 volumes:
   user-data:
     name: user-data
+  icu-data:
+    name: icu-data
   nginx_logs:
     name: nginx_logs # docker volume inspect nginx_logs
 
 secrets:
-  mysql-root-password:
+  user-mysql-root-password:
     file: ./user-db/MySQL_root.password
-  mysql-user-password:
+  user-mysql-user-password:
     file: ./user-db/MySQL_user.password    
+  icu-mysql-root-password:
+    file: ./icu-db/MySQL_root.password
+  icu-mysql-user-password:
+    file: ./icu-db/MySQL_user.password  

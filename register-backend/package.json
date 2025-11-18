@@ -1,5 +1,5 @@
 {
-  "name": "backend-for-frontend",
+  "name": "register-backend",
   "version": "1.0.0",
   "description": "Link Line account with ProviderId",
   "main": "index.js",

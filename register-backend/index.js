@@ -20,8 +20,8 @@ const __dirname = path.dirname(__filename);
 
 // --- HTTPS Server Options ---
 const options = {
-  key: fs.readFileSync(path.join(__dirname, "cert", "backend-for-frontend.key")),
-  cert: fs.readFileSync(path.join(__dirname, "cert", "backend-for-frontend.crt")),
+  key: fs.readFileSync(path.join(__dirname, "cert", "register-backend.key")),
+  cert: fs.readFileSync(path.join(__dirname, "cert", "register-backend.crt")),
 };
 
 // --- ✨ Dependency Injection (Wiring) ✨ ---
