@@ -15,7 +15,8 @@ services:
       - ./certs/proxy-server.key:/etc/nginx/certs/proxy-server.key:ro # Mount the bundle as read-only 
       - nginx_logs:/var/log/nginx
     depends_on:
-      - user-db-api  
+      - user-db-api 
+      - icu-db-api   
     networks:
       - app-network
 
@@ -40,6 +41,28 @@ services:
         condition: service_started
     networks:
       - app-network
+
+  # Node.js ICU dashboard forntend
+  icu-frontend:
+    build:
+      context: ./icu-frontend # Path to the Dockerfile and source code
+      dockerfile: Dockerfile
+    container_name: icu-frontend
+    ports:
+      - "3008:3008"
+    volumes:
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
+      - ./certs/icu-frontend.crt:/usr/src/app/cert/icu-frontend.crt:ro # Mount the bundle as read-only 
+      - ./certs/icu-frontend.key:/usr/src/app/cert/icu-frontend.key:ro # Mount the bundle as read-only      
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem      
+    depends_on:
+      proxy-server:
+        condition: service_started
+    networks:
+      - app-network      
 
   # Node.js backend Service
   register-backend:
@@ -154,6 +177,29 @@ services:
     networks:
       - app-network
 
+  # ICU DB API Server Service
+  icu-db-api:
+    build:
+      context: ./icu-db-api # Path to the Dockerfile and source code
+      dockerfile: Dockerfile
+    container_name: icu-db-api
+    ports:
+      - "3007:3007"
+    volumes:
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro 
+      - ./certs/icu-db-api.crt:/usr/src/app/cert/icu-db-api.crt:ro  
+      - ./certs/icu-db-api.key:/usr/src/app/cert/icu-db-api.key:ro 
+      - ./keys/public-key/icu-db-api-public-key.pem:/usr/src/app/public-key/icu-db-api-public-key.pem:ro
+    depends_on:
+      icu-db:
+        condition: service_healthy      
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem
+    networks:
+      - app-network
+
   # File Server Service
   file-server:
     build:
@@ -233,12 +279,13 @@ services:
     networks:
       - app-network
 
-
+# Network
 networks:
   app-network:
     name: app-network
     driver: bridge
 
+# Volume
 volumes:
   user-data:
     name: user-data
@@ -247,6 +294,7 @@ volumes:
   nginx_logs:
     name: nginx_logs # docker volume inspect nginx_logs
 
+# Secret
 secrets:
   user-mysql-root-password:
     file: ./user-db/MySQL_root.password

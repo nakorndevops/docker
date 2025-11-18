@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICU Dashboard (Colored Inputs)</title>
+    <style>
+        /* --- Base Styles --- */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        /* --- Dashboard Layout (Responsive) --- */
+        #dashboard-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        /* --- ICU Card Styling --- */
+        .icu-card {
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            position: relative;
+        }
+
+        .icu-card h3 {
+            margin: 0 0 5px 0;
+            color: #005a9c;
+            font-size: 1.25rem;
+        }
+
+        .icu-card h4 {
+            margin: 10px 0 5px 0;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            font-size: 1rem;
+            color: #444;
+        }
+
+        /* --- Bed Info Stats --- */
+        .bed-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            text-align: center;
+        }
+
+        .bed-info div {
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+        }
+
+        .bed-info .stat-label {
+            display: block;
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .bed-info .stat-value {
+            display: block;
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        /* --- Combined Bar Chart Styling --- */
+        .bar-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden; 
+            height: 32px;
+            display: flex;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .bar-segment {
+            height: 100%;
+            transition: width 0.5s ease-in-out;
+            border-right: 1px solid rgba(255, 255, 255, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
+            font-weight: bold;
+            color: #333;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .bar-segment:last-child {
+            border-right: none;
+        }
+        
+        /* Color definitions */
+        .high-risk { background-color: #d9534f; color: #fff; }
+        .medium-risk { background-color: #f0ad4e; color: #fff; }
+        .low-risk { background-color: #5cb85c; color: #fff; }
+        .available-beds { background-color: #e9ecef; color: #333; }
+
+        /* --- Legend --- */
+        .legend {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px 10px;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+
+        .legend span {
+            display: flex;
+            align-items: center;
+        }
+
+        .legend .dot {
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+        
+        /* --- Button & Form Styles --- */
+        .card-footer {
+            margin-top: auto; /* Pushes footer to the bottom */
+            padding-top: 15px;
+            border-top: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 16px;
+            font-size: 0.9em;
+            font-weight: bold;
+            text-align: center;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover { background-color: #0056b3; }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover { background-color: #5a6268; }
+
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-success:hover { background-color: #218838; }
+
+        .input-form-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Style for the risk breakdown fields */
+        .risk-breakdown {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+
+        .input-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #444;
+            font-size: 0.9em;
+        }
+
+        .input-group input[type="number"] {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1.1em;
+            outline-color: #007bff;
+            width: 100%; 
+        }
+        
+        /* Style for the fixed Total Patients display */
+        .fixed-total {
+            padding: 10px;
+            font-size: 1.25em;
+            font-weight: bold;
+            background-color: #e9ecef;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            color: #333;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        /* --- NEW: Form Risk Colors --- */
+        .input-high label {
+            color: #d9534f;
+        }
+        .input-high input {
+            border-color: #d9534f;
+            border-width: 2px;
+        }
+        .input-high input:focus {
+            outline-color: #d9534f; /* Change the default blue 'glow' to red */
+        }
+
+        .input-medium label {
+            color: #f0ad4e;
+        }
+        .input-medium input {
+            border-color: #f0ad4e;
+            border-width: 2px;
+        }
+         .input-medium input:focus {
+            outline-color: #f0ad4e;
+        }
+
+        .input-low label {
+            color: #5cb85c;
+        }
+        .input-low input {
+            border-color: #5cb85c;
+            border-width: 2px;
+        }
+        .input-low input:focus {
+            outline-color: #5cb85c;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>🏥 ICU Status Dashboard</h1>
+
+    <div id="dashboard-container">
+        </div>
+
+    <script>
+        // 1. Your data
+        let icuData = [
+            {
+                "ward": 41,
+                "name": "ICU CCU (หอผู้ป่วยหนักอายุรกรรมโรคหัวใจ) IPD",
+                "total_beds": 10,
+                "patient_count": 6,
+                "available_beds": 4,
+                "High": 2,
+                "Medium": 2,
+                "Low": 2
+            },
+            {
+                "ward": 24,
+                "name": "ICU CVT (หอผู้ป่วยหนักผ่าตัดหัวใจ) IPD",
+                "total_beds": 5,
+                "patient_count": 1,
+                "available_beds": 4,
+                "High": 1,
+                "Medium": 0,
+                "Low": 0
+            },
+            {
+                "ward": 22,
+                "name": "ICU ศัลยกรรม (อาคารวินิจฉัย ช.4 ) IPD",
+                "total_beds": 10,
+                "patient_count": 8,
+                "available_beds": 2,
+                "High": 3,
+                "Medium": 3,
+                "Low": 2
+            },
+            {
+                "ward": 10,
+                "name": "ICU อายุรกรรม (อาคารวินิจฉัย ช.4 ) IPD",
+                "total_beds": 10,
+                "patient_count": 8,
+                "available_beds": 2,
+                "High": 2,
+                "Medium": 3,
+                "Low": 3
+            }
+        ];
+
+        // 2. Get the container element
+        const container = document.getElementById('dashboard-container');
+
+        /**
+         * 3. Function to render the CONTENT of a card (Chart view)
+         */
+        function getCardContentHTML(ward) {
+            let highPct = (ward.High / ward.total_beds) * 100;
+            let mediumPct = (ward.Medium / ward.total_beds) * 100;
+            let lowPct = (ward.Low / ward.total_beds) * 100;
+            let availablePct = (ward.available_beds / ward.total_beds) * 100;
+
+            return `
+                <h3>${ward.name} (Ward ${ward.ward})</h3>
+                <div class="bed-info">
+                    <div>
+                        <span class="stat-label">Patients</span>
+                        <span class="stat-value">${ward.patient_count}</span>
+                    </div>
+                    <div>
+                        <span class="stat-label">Available</span>
+                        <span class="stat-value">${ward.available_beds}</span>
+                    </div>
+                    <div>
+                        <span class="stat-label">Total Beds</span>
+                        <span class="stat-value">${ward.total_beds}</span>
+                    </div>
+                </div>
+                <h4>Ward Status (Total: ${ward.total_beds} Beds)</h4>
+                <div class="bar-container">
+                    <div class="bar-segment high-risk" style="width: ${highPct}%;" title="High Risk: ${ward.High}">
+                        ${ward.High > 0 ? ward.High : ''}
+                    </div>
+                    <div class="bar-segment medium-risk" style="width: ${mediumPct}%;" title="Medium Risk: ${ward.Medium}">
+                        ${ward.Medium > 0 ? ward.Medium : ''}
+                    </div>
+                    <div class="bar-segment low-risk" style="width: ${lowPct}%;" title="Low Risk: ${ward.Low}">
+                        ${ward.Low > 0 ? ward.Low : ''}
+                    </div>
+                    <div class="bar-segment available-beds" style="width: ${availablePct}%;" title="Available: ${ward.available_beds}">
+                        ${ward.available_beds > 0 ? ward.available_beds : ''}
+                    </div>
+                </div>
+                <div class="legend">
+                    <span><i class="dot high-risk"></i> High Risk</span>
+                    <span><i class="dot medium-risk"></i> Medium Risk</span>
+                    <span><i class="dot low-risk"></i> Low Risk</span>
+                    <span><i class="dot available-beds"></i> Available</span>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-primary btn-update" data-ward-id="${ward.ward}">Update</button>
+                </div>
+            `;
+        }
+
+        /**
+         * 4. Function to render the INPUT FORM for a card (Update view)
+         */
+        function getCardFormHTML(ward) {
+            // Added classes 'input-high', 'input-medium', 'input-low'
+            return `
+                <h3>Update: ${ward.name}</h3>
+                <div class="input-form-container">
+                    
+                    <div class="input-group">
+                        <label>Total Patients (Fixed)</label>
+                        <div class="fixed-total">${ward.patient_count}</div>
+                    </div>
+
+                    <div class="risk-breakdown" style="border-top: 1px solid #eee; padding-top: 15px;">
+                        <div class="input-group input-high">
+                            <label for="input-high-${ward.ward}">High</label>
+                            <input type="number" id="input-high-${ward.ward}" value="${ward.High}" min="0">
+                        </div>
+                        <div class="input-group input-medium">
+                            <label for="input-medium-${ward.ward}">Medium</label>
+                            <input type="number" id="input-medium-${ward.ward}" value="${ward.Medium}" min="0">
+                        </div>
+                        <div class="input-group input-low">
+                            <label for="input-low-${ward.ward}">Low</label>
+                            <input type="number" id="input-low-${ward.ward}" value="${ward.Low}" min="0">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-success btn-save" data-ward-id="${ward.ward}">Save</button>
+                        <button class="btn btn-secondary btn-cancel" data-ward-id="${ward.ward}">Cancel</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        /**
+         * 5. Function to render a single card
+         */
+        function renderCard(wardId) {
+            const ward = icuData.find(w => w.ward === wardId);
+            const cardElement = document.getElementById(`card-${ward.ward}`);
+            if (cardElement && ward) {
+                cardElement.innerHTML = getCardContentHTML(ward);
+            }
+        }
+
+        /**
+         * 6. Initial Dashboard Render
+         */
+        function renderDashboard() {
+            container.innerHTML = ''; // Clear dashboard
+            icuData.forEach(ward => {
+                const card = document.createElement('div');
+                card.className = 'icu-card';
+                card.id = `card-${ward.ward}`; // Give each card a unique ID
+                card.innerHTML = getCardContentHTML(ward); // Fill with content
+                container.appendChild(card);
+            });
+        }
+        
+        /**
+         * 7. Event Listeners (for Clicks)
+         */
+        container.addEventListener('click', function(e) {
+            const target = e.target;
+            const wardId = parseInt(target.dataset.wardId);
+            
+            if (!wardId) return;
+
+            const ward = icuData.find(w => w.ward === wardId);
+            const cardElement = document.getElementById(`card-${wardId}`);
+            
+            if (!ward || !cardElement) return;
+
+            // --- Clicked "Update" button ---
+            if (target.classList.contains('btn-update')) {
+                cardElement.innerHTML = getCardFormHTML(ward);
+            }
+            
+            // --- Clicked "Cancel" button ---
+            if (target.classList.contains('btn-cancel')) {
+                renderCard(wardId); // Re-render the original content
+            }
+            
+            // --- Clicked "Save" button ---
+            if (target.classList.contains('btn-save')) {
+                // Get new values from the form
+                const newHigh = parseInt(document.getElementById(`input-high-${wardId}`).value) || 0;
+                const newMedium = parseInt(document.getElementById(`input-medium-${wardId}`).value) || 0;
+                const newLow = parseInt(document.getElementById(`input-low-${wardId}`).value) || 0;
+                
+                const newRiskTotal = newHigh + newMedium + newLow;
+                const fixedPatientCount = ward.patient_count;
+
+                // --- VALIDATION: Check if breakdown matches the fixed total ---
+                if (newRiskTotal !== fixedPatientCount) {
+                    alert(`Error: Risk breakdown total (${newRiskTotal}) must exactly match the Total Patients (${fixedPatientCount}).\n\nHigh (${newHigh}) + Medium (${newMedium}) + Low (${newLow}) = ${newRiskTotal}`);
+                    return; // Stop execution
+                }
+
+                // All validations passed, update the data
+                ward.High = newHigh;
+                ward.Medium = newMedium;
+                ward.Low = newLow;
+                
+                // Re-render the card with the new data
+                renderCard(wardId);
+            }
+        });
+
+        // 8. Initial Load
+        renderDashboard();
+
+    </script>
+
+</body>
+</html>

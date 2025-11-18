@@ -77,4 +77,32 @@ router.post("/checkActiveUser", verifyToken, async (request, response) => {
   }
 });
 
+router.post("/icuBedStatus", verifyToken, async (request, response) => {
+  try {
+    const myQuery = `
+      SELECT
+        w.ward AS ward_code,
+        w.NAME AS ward_name,
+        w.bedcount AS total_beds,
+        COUNT(i.an) AS patient_count,
+        (w.bedcount - COUNT(i.an)) AS available_beds
+      FROM
+        ipt AS i
+        INNER JOIN ward AS w ON i.ward = w.ward
+      WHERE
+        i.ward IN (10, 22, 24, 41)
+        AND i.dchdate IS NULL
+      GROUP BY
+        w.NAME
+      ORDER BY
+        w.ward;
+    `;
+    const [result] = await pool.query(myQuery);
+    response.json(result);
+  } catch (err) {
+    console.error("Query Error [/]:", err.message);
+    response.status(500).json({ error: "Error executing query" });
+  }
+});
+
 export default router;
