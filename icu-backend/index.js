@@ -5,7 +5,15 @@ import fs from "fs";
 import path from "path";
 
 const app = express();
-const port = process.env.PORT || 3009; // Use a default port
+const port = process.env.PORT || 3009;
+
+const hosxpApiKey = process.env.HOSXP_API_KEY;
+const icuApiKey = process.env.ICU_API_KEY;
+const userApiKey = process.env.USER_DB_API_KEY;
+
+const hosxpApiUrl = process.env.HOSxP_API_URL;
+const icuApiUrl = process.env.ICU_API_URL;
+const userApiUrl = process.env.USERDB_API_URL;
 
 // --- Middleware ---
 app.use(express.json()); // Middleware to parse JSON bodies
@@ -17,12 +25,125 @@ const options = {
   cert: fs.readFileSync(path.join(__dirname, "./cert/icu-backend.crt")),
 };
 
-app.post("/", async (request, response) => {
+const userAuthen = async (request, response, next) => {
+  const { LineUserId } = request.body;
+
+  // Check user exist
+  const getUserOptions = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userApiKey}`,
+    },
+    body: JSON.stringify({
+      LineUserId: LineUserId,
+    }),
+  };
+  const userApiResponse = await fetch(userApiUrl + "/getUser", getUserOptions);
+  const userData = await userApiResponse.json();
+
+  console.log(userData);
+
+  if (userApiResponse == 404) {
+    response.status(403).json({ error: "Access Denied" });
+  }
+
+  if (userApiResponse == 500) {
+    response.status(500).json({ error: "Error retrieving license_id." });
+  }
+
+
+  // Check Active User
+  const checkUserOptions = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${hosxpApiKey}`,
+    },
+    body: JSON.stringify({
+      license_id: userData.license_id,
+    }),
+  };
+  const hosxpApiResponse = await fetch(hosxpApiUrl + "/checkActiveUser", checkUserOptions);
+  const verifyStatus = await hosxpApiResponse.json();
+  console.log(verifyStatus);
+
+  if(!verifyStatus.status) {
+    response.status(403).json({ error: "Access Denied" });
+  }
+
+  next();
+};
+
+app.post("/", userAuthen, async (request, response) => {
   const replyMessage = {
     type: "text",
-    text: "Hello World!", 
+    text: "Hello World!",
   };
   response.json(replyMessage);
+});
+
+app.post("/icuStatus", userAuthen, async (request, response) => {
+  const icuBedStatusOptions = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${hosxpApiKey}`,
+    },
+  };
+  const hosxoApiResponse = await fetch(hosxpApiUrl + "/icuBedStatus", icuBedStatusOptions);
+  const wardsData = await hosxoApiResponse.json();
+
+  const icuBedRiskOptions = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${icuApiKey}`,
+    },
+  };
+  const icuApiResponse = await fetch(icuApiUrl + "/icuBedRisk", icuBedRiskOptions);
+  const riskData = await icuApiResponse.json();
+
+  // 1. Create a lookup object from the riskData for faster access
+  // This converts the array into an object where keys are 'ward_code'
+  const riskLookup = riskData.reduce((acc, item) => {
+    acc[item.ward_code] = item;
+    return acc;
+  }, {});
+
+  // 2. Map through the wardsData and merge with the corresponding risk data
+  const combinedData = wardsData.map(ward => {
+    // Find the matching risk object using the ID
+    const riskInfo = riskLookup[ward.ward_code] || {};
+
+    // Return a new merged object
+    return {
+      ...ward,       // Spread properties from the ward object
+      ...riskInfo    // Spread properties from the risk object
+    };
+  });
+
+  response.json(combinedData);
+});
+
+app.post("/icuBedRiskUpdate", userAuthen, async (request, response) => {
+  const { ward_code, high_risk, medium_risk, low_risk } = request.body;
+  const options = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${icuApiKey}`,
+    },
+    body: JSON.stringify({
+      ward_code: ward_code,
+      high_risk: high_risk,
+      medium_risk: medium_risk,
+      low_risk: low_risk,
+    }),    
+  };
+  const icuApiResponse = await fetch(icuApiUrl + "/icuBedRiskUpdate", options);
+  const result = await icuApiResponse .json();
+  response.status(icuApiResponse.status).json(result);
 });
 
 // --- Create and Start Server ---
