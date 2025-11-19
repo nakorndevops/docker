@@ -70,7 +70,7 @@ router.post("/checkActiveUser", verifyToken, async (request, response) => {
     const [result] = await pool.query(myQuery, [licenseno]);
     // Send the boolean value (0 or 1) directly
     const status = result[0].is_active_user;
-    response.json({ status: !!status });
+    response.status(200).json({ status: !!status });
   } catch (err) {
     console.error("Query Error [/checkActiveUser]:", err.message);
     response.status(500).json({ error: "Error executing query" });
@@ -100,7 +100,7 @@ router.post("/icuBedStatus", verifyToken, async (request, response) => {
         w.ward;
     `;
     const [result] = await pool.query(myQuery);
-    response.json(result);
+    response.status(200).json(result);
   } catch (err) {
     console.error("Query Error [/]:", err.message);
     response.status(500).json({ error: "Error executing query" });

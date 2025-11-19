@@ -19,7 +19,7 @@ router.post("/checkUserExist", verifyToken, async (request, response) => {
 
   try {
     const userFound = await checkExist(pool, 'user', 'LineUserId', LineUserId);
-    response.json(userFound); // Responds with true or false
+    response.status(200).json(userFound); // Responds with true or false
   } catch (error) {
     console.error("Critical error in /checkUserExist:", error.message);
     response.status(500).json({ error: "An internal server error occurred." });
@@ -37,7 +37,7 @@ router.post("/unlink", verifyToken, async (request, response) => {
     const myQuery = `DELETE FROM user WHERE LineUserId = ?;`;
     const [result] = await pool.query(myQuery, [LineUserId]);
     console.log("Unlink success");
-    response.json({unlinkResult: "Your Line account was unlinked from service"});
+    response.status(200).json({unlinkResult: "Your Line account was unlinked from service"});
   } catch (err) {
     console.error("Query Error [/unlink]:", err.message);
     response.status(500).json({ error: "Error executing query" });

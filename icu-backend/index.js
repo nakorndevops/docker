@@ -42,16 +42,9 @@ const userAuthen = async (request, response, next) => {
   const userApiResponse = await fetch(userApiUrl + "/getUser", getUserOptions);
   const userData = await userApiResponse.json();
 
-  console.log(userData);
-
-  if (userApiResponse == 404) {
-    response.status(403).json({ error: "Access Denied" });
+  if (userApiResponse.status != 200) {
+    response.status(userApiResponse.status).json(userData);
   }
-
-  if (userApiResponse == 500) {
-    response.status(500).json({ error: "Error retrieving license_id." });
-  }
-
 
   // Check Active User
   const checkUserOptions = {
@@ -66,7 +59,10 @@ const userAuthen = async (request, response, next) => {
   };
   const hosxpApiResponse = await fetch(hosxpApiUrl + "/checkActiveUser", checkUserOptions);
   const verifyStatus = await hosxpApiResponse.json();
-  console.log(verifyStatus);
+
+  if(hosxpApiResponse.status != 200) {
+    response.status(hosxpApiResponse.status).json(verifyStatus);
+  }
 
   if(!verifyStatus.status) {
     response.status(403).json({ error: "Access Denied" });
