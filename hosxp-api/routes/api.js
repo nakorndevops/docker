@@ -84,7 +84,7 @@ router.post("/icuBedStatus", verifyToken, async (request, response) => {
     const myQuery = `
       SELECT
         w.ward AS ward_code,
-        w.NAME AS ward_name,
+        w.shortname AS ward_name,
         w.bedcount AS total_beds,
         COUNT(i.an) AS patient_count,
         (w.bedcount - COUNT(i.an)) AS available_beds

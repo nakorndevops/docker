@@ -303,7 +303,7 @@
 
 <body>
 
-    <h1>🏥 ICU Status Dashboard</h1>
+    <h1>ICU Status Dashboard</h1>
 
     <div id="dashboard-container">
     </div>
@@ -364,11 +364,24 @@
                 }),
             });
 
-            const icuData = await response.json();
+            const data = await response.json();
 
-            return icuData;
+            console.log(response.status);
+
+            if (response.status == 403) {
+                // Redirect to 403.html
+                return false;
+            } else if (response.status == 500 || response.status == 400) {
+                // Redirect to 500.html
+                return false;
+            } else if (response.status == 404) {
+                // Redirect to providerid-login.html
+                window.location.replace("https://dh.tranghos.moph.go.th/providerid-login");
+                // console.log("No user");
+            } else {
+                return data;
+            }
         }
-
 
         async function updateICUData(LineUserId, data) {
             const endpointUrl = 'https://dh.tranghos.moph.go.th/icu-backend/icuBedRiskUpdate';
@@ -389,10 +402,8 @@
                 }),
             });
 
-
             const updateResult = await response.json();
         }
-
 
         document.addEventListener('DOMContentLoaded', async function () {
 
@@ -435,13 +446,8 @@
                     let lowPct = (ward.low_risk / ward.total_beds) * 100;
                     let availablePct = (ward.available_beds / ward.total_beds) * 100;
 
-                    const modifiedWardName = ward.ward_name
-                        .replace(/\(.*?\)/g, "") // 1. Remove (...) and text inside
-                        .replace(/IPD/g, "")     // 2. Remove the exact string "ICU"
-                        .replace(/\s+/g, " ");    // 3. Remove all white space
-
                     return `
-                <h3>${modifiedWardName}</h3>
+                <h3>${ward.ward_name}</h3>
                 <div class="bed-info">
                     <div>
                         <span class="stat-label">Patients</span>
