@@ -1,6 +1,6 @@
 services:
 
-  # Proxy Server
+  # Proxy Server - The ONLY service exposing ports
   proxy-server:
     image: nginx:alpine
     container_name: proxy-server
@@ -8,33 +8,42 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      - TZ=Asia/Bangkok # Replace with your desired timezone      
+      - TZ=Asia/Bangkok
     volumes:
-      - ./proxy-server/nginx.conf:/etc/nginx/nginx.conf:ro # Mount Nginx configuration
-      - ./certs/proxy-server.crt:/etc/nginx/certs/proxy-server.crt:ro # Mount the bundle as read-only 
-      - ./certs/proxy-server.key:/etc/nginx/certs/proxy-server.key:ro # Mount the bundle as read-only 
+      - ./proxy-server/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs/proxy-server.crt:/etc/nginx/certs/proxy-server.crt:ro
+      - ./certs/proxy-server.key:/etc/nginx/certs/proxy-server.key:ro
       - nginx_logs:/var/log/nginx
     depends_on:
       - user-db-api 
       - icu-db-api   
     networks:
       - app-network
+    restart: unless-stopped
 
   # Node.js Register Service
   register-frontend:
     build:
-      context: ./register-frontend # Path to the Dockerfile and source code
+      context: ./register-frontend
       dockerfile: Dockerfile
     container_name: register-frontend
-    ports:
-      - "3000:3000"
+    # ports removed for security
+    user: "node"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
     volumes:
-      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
-      - ./certs/register-frontend.crt:/usr/src/app/cert/register-frontend.crt:ro # Mount the bundle as read-only 
-      - ./certs/register-frontend.key:/usr/src/app/cert/register-frontend.key:ro # Mount the bundle as read-only      
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro
+      - ./certs/register-frontend.crt:/usr/src/app/cert/register-frontend.crt:ro
+      - ./certs/register-frontend.key:/usr/src/app/cert/register-frontend.key:ro      
     environment:
       - NODE_ENV=production
-      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - TZ=Asia/Bangkok
       - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem      
     depends_on:
       proxy-server:
@@ -42,21 +51,29 @@ services:
     networks:
       - app-network
 
-  # Node.js ICU dashboard forntend
+  # Node.js ICU dashboard frontend
   icu-frontend:
     build:
-      context: ./icu-frontend # Path to the Dockerfile and source code
+      context: ./icu-frontend
       dockerfile: Dockerfile
     container_name: icu-frontend
-    ports:
-      - "3008:3008"
+    # ports removed for security
+    user: "node"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
     volumes:
-      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
-      - ./certs/icu-frontend.crt:/usr/src/app/cert/icu-frontend.crt:ro # Mount the bundle as read-only 
-      - ./certs/icu-frontend.key:/usr/src/app/cert/icu-frontend.key:ro # Mount the bundle as read-only      
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro
+      - ./certs/icu-frontend.crt:/usr/src/app/cert/icu-frontend.crt:ro
+      - ./certs/icu-frontend.key:/usr/src/app/cert/icu-frontend.key:ro      
     environment:
       - NODE_ENV=production
-      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - TZ=Asia/Bangkok
       - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem      
     depends_on:
       proxy-server:
@@ -67,18 +84,26 @@ services:
   # Node.js backend Service
   register-backend:
     build:
-      context: ./register-backend # Path to the Dockerfile and source code
+      context: ./register-backend
       dockerfile: Dockerfile
     container_name: register-backend
-    ports:
-      - "3002:3002"
+    # ports removed for security
+    user: "node"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
     volumes:
-      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
-      - ./certs/register-backend.crt:/usr/src/app/cert/register-backend.crt:ro # Mount the bundle as read-only 
-      - ./certs/register-backend.key:/usr/src/app/cert/register-backend.key:ro # Mount the bundle as read-only
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro
+      - ./certs/register-backend.crt:/usr/src/app/cert/register-backend.crt:ro
+      - ./certs/register-backend.key:/usr/src/app/cert/register-backend.key:ro
     environment:
       - NODE_ENV=production
-      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - TZ=Asia/Bangkok
       - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem
     depends_on:
       proxy-server:
@@ -89,18 +114,26 @@ services:
   # Node.js backend Service
   icu-backend:
     build:
-      context: ./icu-backend # Path to the Dockerfile and source code
+      context: ./icu-backend
       dockerfile: Dockerfile
     container_name: icu-backend
-    ports:
-      - "3009:3009"
+    # ports removed for security
+    user: "node"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
     volumes:
-      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
-      - ./certs/icu-backend.crt:/usr/src/app/cert/icu-backend.crt:ro # Mount the bundle as read-only 
-      - ./certs/icu-backend.key:/usr/src/app/cert/icu-backend.key:ro # Mount the bundle as read-only
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro
+      - ./certs/icu-backend.crt:/usr/src/app/cert/icu-backend.crt:ro
+      - ./certs/icu-backend.key:/usr/src/app/cert/icu-backend.key:ro
     environment:
       - NODE_ENV=production
-      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - TZ=Asia/Bangkok
       - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem
     depends_on:
       proxy-server:
@@ -111,19 +144,27 @@ services:
   # HOSxP API Server Service
   hosxp-api:
     build:
-      context: ./hosxp-api # Path to the Dockerfile and source code
+      context: ./hosxp-api
       dockerfile: Dockerfile
     container_name: hosxp-api
-    ports:
-      - "3001:3001"
+    # ports removed for security
+    user: "node"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
     volumes:
-      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
-      - ./certs/hosxp-api.crt:/usr/src/app/cert/hosxp-api.crt:ro # Mount the bundle as read-only 
-      - ./certs/hosxp-api.key:/usr/src/app/cert/hosxp-api.key:ro # Mount the bundle as read-only 
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro
+      - ./certs/hosxp-api.crt:/usr/src/app/cert/hosxp-api.crt:ro
+      - ./certs/hosxp-api.key:/usr/src/app/cert/hosxp-api.key:ro
       - ./keys/public-key/hosxp-api-public-key.pem:/usr/src/app/public-key/hosxp-api-public-key.pem:ro
     environment:
       - NODE_ENV=production
-      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - TZ=Asia/Bangkok
       - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem      
     depends_on:
       proxy-server:
@@ -134,18 +175,26 @@ services:
   # Line Webhook Server Service
   line-webhook-server:
     build:
-      context: ./line-webhook-server # Path to the Dockerfile and source code
+      context: ./line-webhook-server
       dockerfile: Dockerfile
     container_name: line-webhook-server
-    ports:
-      - "3004:3004"
+    # ports removed for security
+    user: "node"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
     volumes:
-      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
-      - ./certs/line-webhook-server.crt:/usr/src/app/cert/line-webhook-server.crt:ro # Mount the bundle as read-only 
-      - ./certs/line-webhook-server.key:/usr/src/app/cert/line-webhook-server.key:ro # Mount the bundle as read-only
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro
+      - ./certs/line-webhook-server.crt:/usr/src/app/cert/line-webhook-server.crt:ro
+      - ./certs/line-webhook-server.key:/usr/src/app/cert/line-webhook-server.key:ro
     environment:
       - NODE_ENV=production
-      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - TZ=Asia/Bangkok
       - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem      
     depends_on:
       proxy-server:
@@ -156,19 +205,27 @@ services:
   # Logic Server Service
   logic-server:
     build:
-      context: ./logic-server # Path to the Dockerfile and source code
+      context: ./logic-server
       dockerfile: Dockerfile
     container_name: logic-server
-    ports:
-      - "3005:3005"
+    # ports removed for security
+    user: "node"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
     volumes:
-      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
-      - ./certs/logic-server.crt:/usr/src/app/cert/logic-server.crt:ro # Mount the bundle as read-only 
-      - ./certs/logic-server.key:/usr/src/app/cert/logic-server.key:ro # Mount the bundle as read-only
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro
+      - ./certs/logic-server.crt:/usr/src/app/cert/logic-server.crt:ro
+      - ./certs/logic-server.key:/usr/src/app/cert/logic-server.key:ro
       - ./keys/public-key/logic-server-api-public-key.pem:/usr/src/app/public-key/logic-server-api-public-key.pem:ro
     environment:
       - NODE_ENV=production
-      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - TZ=Asia/Bangkok
       - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem      
     depends_on:
       proxy-server:
@@ -179,22 +236,30 @@ services:
   # User DB API Server Service
   user-db-api:
     build:
-      context: ./user-db-api # Path to the Dockerfile and source code
+      context: ./user-db-api
       dockerfile: Dockerfile
     container_name: user-db-api
-    ports:
-      - "3003:3003"
+    # ports removed for security
+    user: "node"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
     volumes:
-      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro 
-      - ./certs/user-db-api.crt:/usr/src/app/cert/user-db-api.crt:ro  
-      - ./certs/user-db-api.key:/usr/src/app/cert/user-db-api.key:ro 
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro
+      - ./certs/user-db-api.crt:/usr/src/app/cert/user-db-api.crt:ro
+      - ./certs/user-db-api.key:/usr/src/app/cert/user-db-api.key:ro
       - ./keys/public-key/user-db-api-public-key.pem:/usr/src/app/public-key/user-db-api-public-key.pem:ro
     depends_on:
       user-db:
         condition: service_healthy      
     environment:
       - NODE_ENV=production
-      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - TZ=Asia/Bangkok
       - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem
     networks:
       - app-network
@@ -202,22 +267,30 @@ services:
   # ICU DB API Server Service
   icu-db-api:
     build:
-      context: ./icu-db-api # Path to the Dockerfile and source code
+      context: ./icu-db-api
       dockerfile: Dockerfile
     container_name: icu-db-api
-    ports:
-      - "3007:3007"
+    # ports removed for security
+    user: "node"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
     volumes:
-      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro 
-      - ./certs/icu-db-api.crt:/usr/src/app/cert/icu-db-api.crt:ro  
-      - ./certs/icu-db-api.key:/usr/src/app/cert/icu-db-api.key:ro 
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro
+      - ./certs/icu-db-api.crt:/usr/src/app/cert/icu-db-api.crt:ro
+      - ./certs/icu-db-api.key:/usr/src/app/cert/icu-db-api.key:ro
       - ./keys/public-key/icu-db-api-public-key.pem:/usr/src/app/public-key/icu-db-api-public-key.pem:ro
     depends_on:
       icu-db:
         condition: service_healthy      
     environment:
       - NODE_ENV=production
-      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - TZ=Asia/Bangkok
       - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem
     networks:
       - app-network
@@ -225,18 +298,26 @@ services:
   # File Server Service
   file-server:
     build:
-      context: ./file-server # Path to the Dockerfile and source code
+      context: ./file-server
       dockerfile: Dockerfile
     container_name: file-server
-    ports:
-      - "3006:3006"
+    # ports removed for security
+    user: "node"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
     volumes:
-      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro # Mount the bundle as read-only
-      - ./certs/file-server.crt:/usr/src/app/cert/file-server.crt:ro # Mount the bundle as read-only 
-      - ./certs/file-server.key:/usr/src/app/cert/file-server.key:ro # Mount the bundle as read-only
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro
+      - ./certs/file-server.crt:/usr/src/app/cert/file-server.crt:ro
+      - ./certs/file-server.key:/usr/src/app/cert/file-server.key:ro
     environment:
       - NODE_ENV=production
-      - TZ=Asia/Bangkok # Replace with your desired timezone
+      - TZ=Asia/Bangkok
       - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem      
     depends_on:
       proxy-server:
@@ -262,16 +343,14 @@ services:
       - MYSQL_DATABASE=user_db
       - MYSQL_USER=nakorn
       - MYSQL_PASSWORD_FILE=/run/secrets/user-mysql-user-password
-      - TZ=Asia/Bangkok # Replace with your desired timezone
-    ports:
-      - "3306:3306"
+      - TZ=Asia/Bangkok
+    # Ports removed for security (access only via app-network)
     volumes:
       - ./user-db/my.cnf:/etc/mysql/my.cnf
       - ./user-db/init.sql:/docker-entrypoint-initdb.d/init.sql
       - user-data:/var/lib/mysql
     networks:
       - app-network
-
 
   # ICU DB MySQL Server
   icu-db:
@@ -291,9 +370,8 @@ services:
       - MYSQL_DATABASE=icu_db
       - MYSQL_USER=nakorn
       - MYSQL_PASSWORD_FILE=/run/secrets/icu-mysql-user-password
-      - TZ=Asia/Bangkok # Replace with your desired timezone
-    ports:
-      - "3307:3307"
+      - TZ=Asia/Bangkok
+    # Ports removed for security (access only via app-network)
     volumes:
       - ./icu-db/my.cnf:/etc/mysql/my.cnf
       - ./icu-db/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -314,7 +392,7 @@ volumes:
   icu-data:
     name: icu-data
   nginx_logs:
-    name: nginx_logs # docker volume inspect nginx_logs
+    name: nginx_logs
 
 # Secret
 secrets:
@@ -325,4 +403,4 @@ secrets:
   icu-mysql-root-password:
     file: ./icu-db/MySQL_root.password
   icu-mysql-user-password:
-    file: ./icu-db/MySQL_user.password  
+    file: ./icu-db/MySQL_user.password
