@@ -197,7 +197,13 @@ app.post("/", verifyToken, getLicenseId, async (request, response) => {
       text: replyText,
     };    
 
-  } else {
+  } else if (modifiedsentMessage === "icu") {
+    replyMessage = {
+      type: "text",
+      text: "https://dh.tranghos.moph.go.th/icu",
+    };
+  }
+  else {
     replyMessage = manual;
   }
 
