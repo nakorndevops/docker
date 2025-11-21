@@ -38,7 +38,7 @@ const registerReply = {
 
 const unauthorizedReply = {
   type: "text",
-  text: "Unauthorized user.",
+  text: "Forbidden.",
 };
 
 const errorReply = {

@@ -17,7 +17,7 @@ export function createUserFoundHandler(env) {
         try {
             // --- 2. Call Service ---
             // The service will proxy the request, including status and data
-            const { status, data } = await userService.checkUserExists({
+            const { status, data } = await userService.getUser({
                 LineUserId: LineUserId,
                 apiUrl: env.userdbApiUrl,
                 apiKey: env.userDbApiKey,

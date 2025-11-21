@@ -70,7 +70,15 @@ router.post("/checkActiveUser", verifyToken, async (request, response) => {
     const [result] = await pool.query(myQuery, [licenseno]);
     // Send the boolean value (0 or 1) directly
     const status = result[0].is_active_user;
-    response.status(200).json({ status: !!status });
+
+    // response.status(200).json({ status: !!status });
+
+    if(!!status) {
+      response.status(200).json({ status: !!status });
+    } else {
+      response.status(403).json({ error: "Forbidden." });
+    }
+
   } catch (err) {
     console.error("Query Error [/checkActiveUser]:", err.message);
     response.status(500).json({ error: "Error executing query" });

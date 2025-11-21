@@ -25,6 +25,7 @@ const options = {
   cert: fs.readFileSync(path.join(__dirname, "./cert/icu-backend.crt")),
 };
 
+// User Authen Middleware
 const userAuthen = async (request, response, next) => {
   const { LineUserId } = request.body;
 
@@ -64,20 +65,8 @@ const userAuthen = async (request, response, next) => {
     response.status(hosxpApiResponse.status).json(verifyStatus);
   }
 
-  if(!verifyStatus.status) {
-    response.status(403).json({ error: "Access Denied" });
-  }
-
   next();
 };
-
-app.post("/", userAuthen, async (request, response) => {
-  const replyMessage = {
-    type: "text",
-    text: "Hello World!",
-  };
-  response.json(replyMessage);
-});
 
 app.post("/icuStatus", userAuthen, async (request, response) => {
   const icuBedStatusOptions = {

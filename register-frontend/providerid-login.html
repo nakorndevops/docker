@@ -176,9 +176,14 @@
                 }),
             };
             const registerStatusResponse = await fetch(apiUrl, checkRegisterStatusOptions);
+
             const registerStatus = await registerStatusResponse.json();
 
-            if (!registerStatus) {
+            if (registerStatusResponse.status == 200) {
+                // User is already registered.
+                statusMessage.textContent = "You are already registered.";
+
+            } else if (registerStatusResponse.status == 404) {
                 // Set up the link
                 const redirectURI = "https://dh.tranghos.moph.go.th/register";
                 const client_id = "0195360c-3c82-7d2a-9cdd-8ce44d3f1113";
@@ -188,8 +193,7 @@
                 statusMessage.style.display = 'none';
                 link.classList.add('visible');
             } else {
-                // User is already registered.
-                statusMessage.textContent = "You are already registered.";
+                statusMessage.textContent = registerStatus.data;
             }
         }
     });

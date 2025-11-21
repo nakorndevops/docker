@@ -21,7 +21,11 @@ export async function checkActiveUser(license_id, { apiUrl, apiKey }) {
     const response = await fetch(apiUrl + route, requestOptions);
     const isActive = await response.json(); // Expects 1 (true) or 0 (false)
     // return !!isActive; // Coerce 1/0 to true/false
-    return isActive.status; 
+    if(response.status == 200) {
+      return isActive.status;
+    } else {
+      return false;
+    }
   } catch (error) {
     console.error("Error calling HOSxP API:", error.message);
     throw new Error("Could not check user authorization.");

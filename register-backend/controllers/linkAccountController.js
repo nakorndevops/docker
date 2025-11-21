@@ -87,7 +87,7 @@ export function createLinkAccountHandler(env) {
       if (!isAuthorized) {
         console.warn(`🔴 Authorization failed for license_id: ${license_id}`);
         // Send a 401 based on the logic in your old index.js
-        return res.status(401).json({ error: 'User is inactive or not found.' });
+        return res.status(403).json({ error: 'Forbidden.' });
       }
       console.log('✅ User is authorized.');
 
