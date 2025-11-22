@@ -1,8 +1,9 @@
 {
-  "name": "line-providerid-link-frontend",
+  "name": "register-frontend",
   "version": "1.0.0",
-  "description": "Link Line account with ProviderId",
+  "description": "Frontend service for Line Account Linking with ProviderId",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js"
   },

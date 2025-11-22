@@ -1,8 +1,9 @@
 {
   "name": "icu-frontend",
   "version": "1.0.0",
-  "description": "Link Line account with ProviderId",
+  "description": "Frontend service for ICU Bed Status Dashboard",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js"
   },

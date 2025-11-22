@@ -1,7 +1,7 @@
 {
   "name": "register-backend",
   "version": "1.0.0",
-  "description": "Link Line account with ProviderId",
+  "description": "Backend service for handling Line Account Registration and Linking",
   "main": "index.js",
   "type": "module",
   "scripts": {

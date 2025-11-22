@@ -55,7 +55,7 @@ let license_id;
 
 const manual = {
   type: "flex",
-  altText: "Register with ProviderID",
+  altText: "User Manual",
   contents: {
     "type": "bubble",
     "header": {
@@ -200,7 +200,7 @@ app.post("/", verifyToken, getLicenseId, async (request, response) => {
   } else if (modifiedsentMessage === "icu") {
     replyMessage = {
       type: "text",
-      text: "https://dh.tranghos.moph.go.th/icu",
+      text: "https://liff.line.me/2008398299-D32e7eYB",
     };
   }
   else {

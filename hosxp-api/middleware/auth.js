@@ -1,52 +1,51 @@
-// middleware/auth.js
+/**
+ * @file middleware/auth.js
+ * @description JWT Verification Middleware using RSA256 public key.
+ */
+
 import jwt from "jsonwebtoken";
-import * as fs from "fs";
-import path from "path"; // Using path for more reliable file paths
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// __dirname is not available in ES modules, so we get it this way
-const __dirname = path.resolve(path.dirname(""));
+// Resolve paths for ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.resolve(__dirname, "..");
 
-// Read the public key once when the module loads
-const publicKey = fs.readFileSync(
-  path.join(__dirname, "./public-key/hosxp-api-public-key.pem"),
-  "utf8"
-);
+// Load Public Key
+const PUBLIC_KEY_PATH = path.join(PROJECT_ROOT, "public-key", "hosxp-api-public-key.pem");
+let publicKey;
 
-export const verifyToken = (request, response, next) => {
-  // logs
-  const clientIp = request.ip || request.connection.remoteAddress; // Get client IP (more reliable)
-  const readableTimestamp = new Date().toString();
-  const { method: requestMethod, path: requestPath, protocol: requestProtocol } = request;
-  const userAgent = request.headers["user-agent"];
+try {
+  publicKey = fs.readFileSync(PUBLIC_KEY_PATH, "utf8");
+} catch (error) {
+  console.error(`❌ [FATAL] Could not read public key at ${PUBLIC_KEY_PATH}`);
+  process.exit(1);
+}
 
-  const authHeader = request.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // "Bearer <token>"
+/**
+ * Express Middleware to verify JWT tokens.
+ */
+export const verifyToken = (req, res, next) => {
+  const clientIp = req.ip || req.connection.remoteAddress;
+  const method = req.method;
+  const url = req.originalUrl;
+  
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
-    console.log(
-      `[${clientIp}] - - [${readableTimestamp}] ${requestMethod} ${requestPath} ${requestProtocol} ${userAgent} "Access Denied: No token provided"`
-    );
-    return response.status(401).send("Access Denied: No token provided");
+    console.warn(`[${clientIp}] ⛔ Access Denied (No Token): ${method} ${url}`);
+    return res.status(401).json({ error: "Access Denied: No token provided" });
   }
 
   try {
-    // Verify the token
     const verified = jwt.verify(token, publicKey, { algorithms: ["RS256"] });
-
-    // **IMPROVEMENT**: Attach the verified user payload to the request object
-    request.user = verified;
-
-    // Log success with user info from the token
-    console.log(
-      `[${clientIp}] [${verified.user}] [${verified.organization}] [${readableTimestamp}] ${requestMethod} ${requestPath} ${requestProtocol} ${userAgent}`
-    );
-
-    next(); // Pass control to the next handler
+    req.user = verified;
+    next();
   } catch (err) {
-    // Log failure
-    console.log(
-      `[${clientIp}] - - [${readableTimestamp}] ${requestMethod} ${requestPath} ${requestProtocol} ${userAgent} "Access Denied: Invalid token"`
-    );
-    response.status(403).send("Access Denied: Invalid token");
+    console.warn(`[${clientIp}] ⛔ Access Denied (Invalid Token): ${method} ${url}`);
+    return res.status(403).json({ error: "Access Denied: Invalid token" });
   }
 };

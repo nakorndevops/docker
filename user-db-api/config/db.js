@@ -1,12 +1,16 @@
-// config/db.js
-import mysql from "mysql2/promise";
+/**
+ * @file config/db.js
+ * @description MySQL Database Connection Pool.
+ */
 
-// Create the connection pool.
+import mysql from "mysql2/promise";
+import { env } from "./env.js";
+
 const pool = mysql.createPool({
-  host: process.env.MYSQL_HOST,
-  user: process.env.MYSQL_USER,
-  database: process.env.MYSQL_DATABASE,
-  password: process.env.MYSQL_PASSWORD,
+  host: env.dbHost,
+  user: env.dbUser,
+  password: env.dbPassword,
+  database: env.dbName,
   waitForConnections: true,
   connectionLimit: 10,
   maxIdle: 10,
@@ -14,18 +18,17 @@ const pool = mysql.createPool({
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-  charset: "utf8mb4_unicode_ci", // As per your original file
+  charset: "utf8mb4_unicode_ci",
 });
 
-// Test the connection
+// Connectivity Check
 (async () => {
   try {
     const connection = await pool.getConnection();
-    console.log("Database connected successfully!");
+    console.log("✅ Database connected successfully!");
     connection.release();
   } catch (err) {
-    console.error("Error connecting to the database:", err.message);
-    console.warn("Please ensure MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, and MYSQL_DATABASE are set correctly.");
+    console.error("❌ Database connection failed:", err.message);
   }
 })();
 

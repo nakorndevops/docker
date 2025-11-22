@@ -1,26 +1,89 @@
-const path = require('path');
-const fs = require('fs');
-const express = require('express');
+/**
+ * @file index.js
+ * @description Entry point for the ICU Frontend service.
+ * Serves the static ICU dashboard HTML page over HTTPS.
+ */
 
-const app = express();
+import express from 'express';
+import https from 'https';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-app.use(express.json());
+// --- 1. Configuration & Constants ---
+const DEFAULT_PORT = 3008;
+const CERT_DIR_NAME = 'cert';
+const SSL_KEY_FILENAME = 'icu-frontend.key';
+const SSL_CERT_FILENAME = 'icu-frontend.crt';
 
-const port = process.env.PORT;
+// --- 2. Environment Setup (ESM Fix) ---
+// __dirname is not natively available in ES modules, so we derive it.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const https = require('https');
+// Retrieve Port from Environment
+const SERVER_PORT = process.env.PORT || DEFAULT_PORT;
 
-const options = {
-  key: fs.readFileSync(path.join(__dirname, "cert", "icu-frontend.key")),
-  cert: fs.readFileSync(path.join(__dirname, "cert", "icu-frontend.crt")),
+/**
+ * Loads SSL credentials from the file system.
+ * Exits the process if certificates are missing to prevent insecure startups.
+ * @returns {object} HTTPS options object with key and cert.
+ */
+const loadSSLOptions = () => {
+  try {
+    const keyPath = path.join(__dirname, CERT_DIR_NAME, SSL_KEY_FILENAME);
+    const certPath = path.join(__dirname, CERT_DIR_NAME, SSL_CERT_FILENAME);
+
+    // Verify files exist before attempting to read
+    if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+      throw new Error(`SSL files not found in ${path.join(__dirname, CERT_DIR_NAME)}`);
+    }
+
+    return {
+      key: fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath),
+    };
+  } catch (error) {
+    console.error('[FATAL] Failed to load SSL certificates:', error.message);
+    process.exit(1); // Exit with error code
+  }
 };
 
+// --- 3. Application Initialization ---
+const app = express();
+
+// Middleware: Parse JSON bodies (standard practice)
+app.use(express.json());
+
+// --- 4. Route Definitions ---
+
+/**
+ * Route: GET /
+ * Description: Serves the main ICU Dashboard HTML page.
+ */
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'icu.html'));
+  const filePath = path.join(__dirname, 'icu.html');
+  
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error('[ERROR] Failed to serve icu.html:', err.message);
+      res.status(500).send('Internal Server Error: Could not load dashboard.');
+    }
+  });
 });
 
-const server = https.createServer(options, app);
+// --- 5. Server Startup ---
+try {
+  const sslOptions = loadSSLOptions();
+  const httpsServer = https.createServer(sslOptions, app);
 
-server.listen(port, () => {
-  console.log(`App listening on PORT: ${port}`);
-});
+  httpsServer.listen(SERVER_PORT, () => {
+    console.log('=========================================');
+    console.log(`🚀 ICU Frontend Service Started`);
+    console.log(`👉 HTTPS Server listening on PORT: ${SERVER_PORT}`);
+    console.log('=========================================');
+  });
+} catch (error) {
+  console.error('[FATAL] Failed to start server:', error.message);
+  process.exit(1);
+}

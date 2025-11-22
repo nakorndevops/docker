@@ -1,7 +1,7 @@
 {
   "name": "icu-db-api",
   "version": "1.0.0",
-  "description": "ICU Database API",
+  "description": "API service for ICU Database operations",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "express": "^5.1.0",
-    "mysql2": "^3.14.3",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.14.3"
   }
 }

@@ -2,283 +2,355 @@
 <html lang="en">
 
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registration</title>
+    <title>Registration Status</title>
+    <!-- Import LIFF SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+
     <style>
+        /* --- CSS Variables --- */
+        :root {
+            --success-color: #28a745;
+            --error-color: #dc3545;
+            --text-color: #333333;
+            --text-muted: #6c757d;
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- Base Layout --- */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            background-color: #ffffff;
+            padding: 20px;
         }
 
-        .container {
-            display: none;
-            background-color: #ffffff;
-            padding: 2rem;
-            border-radius: 8px;
-            /* Removed border and box-shadow */
+        .card {
+            background-color: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
             text-align: center;
-            max-width: 90%;
-            box-sizing: border-box;
-        }
-
-        .success {
-            color: #28a745;
-            margin-bottom: 1.5rem;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: max-content 1fr;
-            gap: 0.5rem 1rem;
-            text-align: left;
-            margin: 0 auto;
-            width: fit-content;
-            margin-bottom: 2rem;
-            /* Added space for the button */
-        }
-
-        .label {
-            font-weight: bold;
-            text-align: left;
-            color: #333;
-        }
-
-        .value {
-            color: #555;
-            text-align: right;
-        }
-
-        .close-btn {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .close-btn:hover {
-            background-color: #218838;
-        }
-
-        .container-error {
+            max-width: 500px;
+            width: 100%;
             display: none;
-            background-color: #ffffff;
-            padding: 2rem;
-            border-radius: 8px;
-            text-align: center;
-            max-width: 400px;
-            width: 90%;
-            box-sizing: border-box;
+            /* Hidden by default */
+            animation: fadeIn 0.5s ease-out;
         }
 
-        .fail {
-            color: #dc3545;
-            /* Red */
+        .card.visible {
+            display: block;
+        }
+
+        /* --- Typography --- */
+        h1 {
             margin-top: 0;
-            margin-bottom: 0.5rem;
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .text-success {
+            color: var(--success-color);
+        }
+
+        .text-error {
+            color: var(--error-color);
         }
 
         .error-message {
-            color: #6c757d;
-            /* Gray */
+            color: var(--text-muted);
+            font-size: 1.1rem;
             margin-bottom: 1.5rem;
-            font-size: 1.1em;
+            line-height: 1.5;
         }
 
-        .close-btn-error {
-            background-color: #dc3545;
-            color: white;
+        /* --- Info Grid for User Data --- */
+        .info-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.75rem 1.5rem;
+            text-align: left;
+            margin: 1.5rem auto;
+            width: fit-content;
+            font-size: 1rem;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .info-value {
+            color: var(--text-muted);
+            text-align: right;
+        }
+
+        /* --- Buttons --- */
+        .btn {
             border: none;
             padding: 12px 24px;
-            font-size: 16px;
-            border-radius: 5px;
+            font-size: 1rem;
+            border-radius: 6px;
             cursor: pointer;
-            transition: background-color 0.2s ease;
+            transition: opacity 0.2s ease;
+            font-weight: 600;
+            color: white;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 1rem;
         }
 
-        .close-btn-error:hover {
-            background-color: #c82333;
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+        }
+
+        .btn-error {
+            background-color: var(--error-color);
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+        }
+
+        /* --- Loading Spinner --- */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
-
 </head>
 
 <body>
 
-    <div id="successRegistration" class="container">
-        <h1 class="success">Registration success</h1>
-        <div class="info-grid">
-            <div class="label">ชื่อ-สกุล</div>
-            <div id="name_th" class="value"></div>
-            <div class="label">วิชาชีพ</div>
-            <div id="position" class="value"></div>
-            <div class="label">เลขใบประกอบวิชาชีพ</div>
-            <div id="license_id" class="value"></div>
-            <div class="label">สังกัด</div>
-            <div id="hname_th" class="value"></div>
-        </div>
-
-        <!-- <button class="close-btn" onclick="closeLiffApp()">Close Window</button> -->
+    <!-- 1. Loading State -->
+    <div id="loading-view" class="loading-container">
+        <div class="spinner"></div>
+        <p>Processing registration...</p>
     </div>
 
-    <div id="failedRegistration" class="container-error">
-        <h1 class="fail">Registration Failed</h1>
-        <p id="errorMessage" class="error-message"></p>
-        <!-- <button class="close-btn-error" onclick="closeLiffApp()">Close</button> -->
+    <!-- 2. Success State -->
+    <div id="success-view" class="card">
+        <h1 class="text-success">Registration Successful! 🎉</h1>
+        <div class="info-grid">
+            <div class="info-label">Name</div>
+            <div id="display-name" class="info-value">-</div>
+
+            <div class="info-label">Position</div>
+            <div id="display-position" class="info-value">-</div>
+
+            <div class="info-label">License ID</div>
+            <div id="display-license" class="info-value">-</div>
+
+            <div class="info-label">Hospital</div>
+            <div id="display-hospital" class="info-value">-</div>
+        </div>
+        <button class="btn btn-success" onclick="liff.closeWindow()">Close Window</button>
+    </div>
+
+    <!-- 3. Error State -->
+    <div id="error-view" class="card">
+        <h1 class="text-error">Registration Failed</h1>
+        <p id="error-message-text" class="error-message">Unknown error occurred.</p>
+        <a href="/providerid-login" class="btn btn-error">Try Again</a>
     </div>
 
 </body>
 
 <script>
-     /**
-     * Initializes the LIFF SDK.
-     * @param {string} liffId - The LIFF ID for initialization.
-     * @returns {Promise<boolean>} - True on success, false on failure.
+    /**
+     * @file register.html
+     * @description Handles the callback from ProviderID OAuth, gets LINE profile, and links the account.
+     */
+
+    // --- 1. Configuration & Constants ---
+    const CONFIG = {
+        LIFF_ID: "2008398299-jXq383Lz",
+        LOGIN_PAGE_URL: "https://dh.tranghos.moph.go.th/providerid-login?origin=register",
+        API_ENDPOINTS: {
+            LINK_ACCOUNT: "https://dh.tranghos.moph.go.th/register-backend/linkAccount"
+        }
+    };
+
+    // --- 2. UI Helpers ---
+    const ui = {
+        loadingView: document.getElementById('loading-view'),
+        successView: document.getElementById('success-view'),
+        errorView: document.getElementById('error-view'),
+
+        fields: {
+            name: document.getElementById('display-name'),
+            position: document.getElementById('display-position'),
+            license: document.getElementById('display-license'),
+            hospital: document.getElementById('display-hospital'),
+            errorMessage: document.getElementById('error-message-text')
+        },
+
+        showSuccess(data) {
+            this.loadingView.style.display = 'none';
+            this.errorView.classList.remove('visible');
+
+            // Populate fields safely
+            const org = data.organization && data.organization[0] ? data.organization[0] : {};
+
+            this.fields.name.textContent = data.name_th || "N/A";
+            this.fields.position.textContent = org.position || "N/A";
+            this.fields.license.textContent = org.license_id || "N/A";
+            this.fields.hospital.textContent = org.hname_th || "N/A";
+
+            this.successView.classList.add('visible');
+        },
+
+        showError(message) {
+            this.loadingView.style.display = 'none';
+            this.successView.classList.remove('visible');
+            this.fields.errorMessage.textContent = message;
+            this.errorView.classList.add('visible');
+        }
+    };
+
+    // --- 3. Core Services ---
+
+    /**
+     * Initializes LIFF.
      */
     async function initializeLiff(liffId) {
         try {
-            await liff.init({ liffId: liffId });
-            console.log("LIFF initialized successfully! 🎉");
+            await liff.init({ liffId });
             return true;
         } catch (err) {
-            console.error(err.code, err.message);
+            console.error("LIFF Init Failed:", err);
             return false;
         }
     }
 
-    async function getUserProfile(accessToken) {
-        const url = 'https://api.line.me/v2/profile';
-
+    /**
+     * Sends the linkage request to the backend.
+     */
+    async function linkUserAccount(payload) {
         try {
-            const response = await fetch(url, {
-                method: 'GET', // Corresponds to -X GET in cURL
+            const response = await fetch(CONFIG.API_ENDPOINTS.LINK_ACCOUNT, {
+                method: 'POST',
                 headers: {
-                    // Corresponds to -H 'Authorization: Bearer ...' in cURL
-                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                 },
+                body: JSON.stringify(payload),
             });
 
-            // Check if the request was successful
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
+            const result = await response.json();
+
+            if (response.ok) {
+                return { success: true, data: result.data };
+            } else {
+                // Backend should return { error: "Message" }
+                return { success: false, error: result.error || `Server Status: ${response.status}` };
             }
-
-            // Parse the JSON response from the API
-            const profileData = await response.json();
-            return profileData;
-
         } catch (error) {
-            // Handle any errors that occurred during the fetch
-            console.error('Could not fetch profile:', error);
+            return { success: false, error: error.message };
         }
     }
 
-    /*
-    function closeLiffApp() {
-        liff.closeWindow();
-    }
-    */
+    // --- 4. Main Flow ---
 
-    //window.onload = async function () {
     document.addEventListener('DOMContentLoaded', async function () {
 
-        // Get providerID Code
-        const queryString = window.location.search;
-        const urlParams = new URLSearchParams(queryString);
+        // Step 1: Validate Query Parameters (OAuth Code)
+        const urlParams = new URLSearchParams(window.location.search);
         const providerIdCode = urlParams.get('code');
 
-        let providerIdLoginUrl = "https://dh.tranghos.moph.go.th/providerid-login?origin=register";
-
+        // If no code is present, the user likely accessed this page directly -> Redirect to login
         if (!providerIdCode) {
-            window.location.replace("https://dh.tranghos.moph.go.th/providerid-login?origin=register");
+            window.location.replace(CONFIG.LOGIN_PAGE_URL);
+            return;
         }
 
-        // Initialize LIFF and check for success
-        const isLiffInitialized = await initializeLiff("2008398299-jXq383Lz");
-
-        if (!isLiffInitialized) {
-            console.log("Error: Could not initialize login service.");
-            return; // Stop execution if LIFF fails
+        // Step 2: Initialize LIFF
+        const isLiffReady = await initializeLiff(CONFIG.LIFF_ID);
+        if (!isLiffReady) {
+            ui.showError("Failed to initialize LINE service. Please close and try again.");
+            return;
         }
 
+        // Step 3: Enforce Login
         if (!liff.isLoggedIn()) {
-            // Redirect to login
-            // const currentUrl = window.location.href.split('?')[0];
-            const fullUrl = window.location.href;
-            // statusMessage.textContent = "Redirecting to login...";
-            liff.login({ redirectUri: fullUrl });
+            // Redirect to LINE Login, coming back to this same URL (preserving the code param)
+            liff.login({ redirectUri: window.location.href });
+            return;
+        }
 
-        } else {
-            const successRegistration = document.getElementById("successRegistration");
-            const name_th = document.getElementById("name_th");
-            const position = document.getElementById("position");
-            const license_id = document.getElementById("license_id");
-            const hname_th = document.getElementById("hname_th");
+        try {
+            // Step 4: Get User Info
+            const profile = await liff.getProfile();
+            const lineUserId = profile.userId;
 
-            const failedRegistration = document.getElementById("failedRegistration");
-            const errorMessage = document.getElementById("errorMessage");
-
-            // Get Access Token
-            const accessToken = await liff.getAccessToken();
-
-            // Get Line User Profile
-            const lineUserProfile = await getUserProfile(accessToken);
-            const LineUserId = lineUserProfile.userId;
-
-            // Get currentUrl
+            // Get the base URL (without query params) to use as the redirect_uri verifier
+            // Note: This must match exactly what was sent in providerid-login.html
             const currentUrl = window.location.href.split('?')[0];
 
-            const endpointUrl = 'https://dh.tranghos.moph.go.th/register-backend/linkAccount';
-
-            // Prepare the data to be sent in the request body
+            // Step 5: Call Backend API
             const requestData = {
-                LineUserId: LineUserId,
+                LineUserId: lineUserId,
                 providerIdCode: providerIdCode,
                 redirect_uri: currentUrl
             };
 
-            try {
-                // Make the POST request using the fetch API
-                const response = await fetch(endpointUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
-                    // Convert the JavaScript object to a JSON string
-                    body: JSON.stringify(requestData),
-                });
+            const result = await linkUserAccount(requestData);
 
-                const userProfile = await response.json();
-                console.log(userProfile);
-
-                if (response.status == 200) {
-                    successRegistration.style.display = "block";
-                    name_th.innerHTML = userProfile.data.name_th;
-                    position.innerHTML = userProfile.data.organization[0].position;
-                    license_id.innerHTML = userProfile.data.organization[0].license_id;
-                    hname_th.innerHTML = userProfile.data.organization[0].hname_th;
-                } else {
-                    failedRegistration.style.display = "block";
-                    errorMessage.innerHTML = userProfile.error;
-                }
-
-            } catch (error) {
-                failedRegistration.style.display = "block";
-                errorMessage.innerHTML = 'There was a problem with registration: ' + error.message;
-                throw error;
+            if (result.success) {
+                ui.showSuccess(result.data);
+            } else {
+                ui.showError(result.error);
             }
+
+        } catch (err) {
+            console.error("Process Error:", err);
+            ui.showError("An unexpected error occurred: " + err.message);
         }
-    //};
     });
 
 </script>

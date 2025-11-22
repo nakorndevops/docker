@@ -27,7 +27,7 @@ const registerReply = {
           "action": {
             "type": "uri",
             "label": "Register with providerID",
-            "uri": "https://dh.tranghos.moph.go.th/providerid-login"
+            "uri": "https://liff.line.me/2008398299-eV59j9Vd"
           },
           "style": "primary"
         }

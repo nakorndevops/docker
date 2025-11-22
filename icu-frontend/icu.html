@@ -4,90 +4,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ICU Dashboard (Updated Data)</title>
+    <title>ICU Status Dashboard</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+    
     <style>
-        /* --- Base Styles --- */
-        * {
-            box-sizing: border-box;
+        /* --- 1. Design Tokens (CSS Variables) --- */
+        :root {
+            /* Colors: Risk Levels */
+            --color-high-risk: #d9534f;   /* Red */
+            --color-medium-risk: #f0ad4e; /* Orange */
+            --color-low-risk: #5cb85c;    /* Green */
+            --color-available: #e9ecef;   /* Grey */
+            
+            /* Colors: UI Elements */
+            --color-primary: #005a9c;
+            --color-bg: #f4f7f6;
+            --color-card-bg: #ffffff;
+            --color-text-main: #333333;
+            --color-text-muted: #666666;
+            
+            /* Buttons */
+            --btn-primary-bg: #007bff;
+            --btn-success-bg: #28a745;
+            --btn-secondary-bg: #6c757d;
+
+            /* Layout */
+            --spacing-unit: 1rem;
+            --border-radius: 8px;
+            --shadow-soft: 0 4px 8px rgba(0, 0, 0, 0.05);
         }
+
+        /* --- 2. Reset & Base Styles --- */
+        * { box-sizing: border-box; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f4f7f6;
+            background-color: var(--color-bg);
+            color: var(--color-text-main);
             margin: 0;
             padding: 20px;
         }
 
         h1 {
             text-align: center;
-            color: #333;
             margin-bottom: 30px;
+            color: var(--color-text-main);
         }
 
-        /* --- Dashboard Layout (Responsive) --- */
+        /* --- 3. Loading State --- */
+        #loading-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--color-primary);
+        }
+        .hidden { display: none !important; }
+
+        /* --- 4. Dashboard Layout --- */
         #dashboard-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 20px;
         }
 
-        /* --- ICU Card Styling --- */
+        /* --- 5. ICU Card Component --- */
         .icu-card {
-            background-color: #ffffff;
+            background-color: var(--color-card-bg);
             border: 1px solid #ddd;
-            border-radius: 8px;
+            border-radius: var(--border-radius);
             padding: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            box-shadow: var(--shadow-soft);
             display: flex;
             flex-direction: column;
             gap: 15px;
-            position: relative;
         }
 
         .icu-card h3 {
             margin: 0 0 5px 0;
-            color: #005a9c;
+            color: var(--color-primary);
             font-size: 1.25rem;
         }
 
-        .icu-card h4 {
+        .section-label {
             margin: 10px 0 5px 0;
             border-top: 1px solid #eee;
             padding-top: 15px;
             font-size: 1rem;
             color: #444;
+            font-weight: 600;
         }
 
-        /* --- Bed Info Stats --- */
-        .bed-info {
+        /* --- Bed Info Stats Grid --- */
+        .bed-stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             gap: 10px;
             text-align: center;
         }
 
-        .bed-info div {
+        .stat-box {
             padding: 10px;
             background-color: #f9f9f9;
             border-radius: 6px;
         }
 
-        .bed-info .stat-label {
+        .stat-label {
             display: block;
             font-size: 0.8em;
-            color: #666;
+            color: var(--color-text-muted);
             margin-bottom: 4px;
         }
 
-        .bed-info .stat-value {
+        .stat-value {
             display: block;
             font-size: 1.4em;
             font-weight: bold;
-            color: #333;
+            color: var(--color-text-main);
         }
 
-        /* --- Combined Bar Chart Styling --- */
-        .bar-container {
+        /* --- Visual Bar Chart --- */
+        .progress-bar-container {
             width: 100%;
             background-color: #e0e0e0;
             border-radius: 6px;
@@ -100,148 +142,79 @@
         .bar-segment {
             height: 100%;
             transition: width 0.5s ease-in-out;
-            border-right: 1px solid rgba(255, 255, 255, 0.5);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 0.9em;
             font-weight: bold;
-            color: #333;
+            color: #fff; /* Text inside bars is usually white */
             overflow: hidden;
             white-space: nowrap;
+            border-right: 1px solid rgba(255,255,255,0.2);
         }
+        .bar-segment:last-child { border-right: none; }
+        .bar-segment.text-dark { color: var(--color-text-main); } /* For available beds */
 
-        .bar-segment:last-child {
-            border-right: none;
-        }
+        /* Segment Colors */
+        .bg-high { background-color: var(--color-high-risk); }
+        .bg-medium { background-color: var(--color-medium-risk); }
+        .bg-low { background-color: var(--color-low-risk); }
+        .bg-available { background-color: var(--color-available); }
 
-        /* Color definitions */
-        .high-risk {
-            background-color: #d9534f;
-            color: #fff;
-        }
-
-        .medium-risk {
-            background-color: #f0ad4e;
-            color: #fff;
-        }
-
-        .low-risk {
-            background-color: #5cb85c;
-            color: #fff;
-        }
-
-        .available-beds {
-            background-color: #e9ecef;
-            color: #333;
-        }
-
-        /* --- Legend --- */
+        /* Legend */
         .legend {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 5px 10px;
-            margin-top: 5px;
-            font-size: 0.9em;
-        }
-
-        .legend span {
             display: flex;
-            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            font-size: 0.9em;
+            margin-top: 5px;
         }
-
-        .legend .dot {
-            height: 12px;
-            width: 12px;
+        .legend-item { display: flex; align-items: center; }
+        .dot {
+            height: 12px; width: 12px;
             border-radius: 50%;
             margin-right: 6px;
-            flex-shrink: 0;
         }
 
-        /* --- Button & Form Styles --- */
-        .card-footer {
-            margin-top: auto;
-            padding-top: 15px;
-            border-top: 1px solid #f0f0f0;
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 10px 16px;
-            font-size: 0.9em;
-            font-weight: bold;
-            text-align: center;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-
-        .btn-primary {
-            background-color: #007bff;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background-color: #0056b3;
-        }
-
-        .btn-secondary {
-            background-color: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background-color: #5a6268;
-        }
-
-        .btn-success {
-            background-color: #28a745;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background-color: #218838;
-        }
-
-        .input-form-container {
+        /* --- Form & Inputs --- */
+        .input-form-wrapper {
             display: flex;
             flex-direction: column;
             gap: 15px;
         }
 
-        .input-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Style for the risk breakdown fields */
-        .risk-breakdown {
+        .risk-inputs-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             gap: 10px;
         }
 
+        .input-group { display: flex; flex-direction: column; }
         .input-group label {
             font-weight: bold;
             margin-bottom: 5px;
-            color: #444;
             font-size: 0.9em;
         }
-
-        .input-group input[type="number"] {
+        .input-group input {
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 6px;
             font-size: 1.1em;
-            outline-color: #007bff;
             width: 100%;
         }
 
-        /* Style for the fixed Total Patients display */
-        .fixed-total {
+        /* Input specific colors */
+        .input-high label { color: var(--color-high-risk); }
+        .input-high input:focus { border-color: var(--color-high-risk); outline-color: var(--color-high-risk); }
+
+        .input-medium label { color: var(--color-medium-risk); }
+        .input-medium input:focus { border-color: var(--color-medium-risk); outline-color: var(--color-medium-risk); }
+
+        .input-low label { color: var(--color-low-risk); }
+        .input-low input:focus { border-color: var(--color-low-risk); outline-color: var(--color-low-risk); }
+
+        /* Fixed value display */
+        .fixed-value-display {
             padding: 10px;
             font-size: 1.25em;
             font-weight: bold;
@@ -251,369 +224,385 @@
             color: #333;
         }
 
-        .form-actions {
+        /* --- Buttons --- */
+        .card-actions {
+            margin-top: auto;
+            padding-top: 15px;
+            border-top: 1px solid #f0f0f0;
             display: flex;
+            justify-content: flex-end;
             gap: 10px;
-            margin-top: 10px;
         }
 
-        /* --- Form Risk Colors --- */
-        .input-high label {
-            color: #d9534f;
+        .btn {
+            padding: 10px 16px;
+            font-size: 0.9em;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            color: white;
+            transition: opacity 0.2s;
         }
+        .btn:hover { opacity: 0.9; }
+        .btn-primary { background-color: var(--btn-primary-bg); }
+        .btn-success { background-color: var(--btn-success-bg); }
+        .btn-secondary { background-color: var(--btn-secondary-bg); }
 
-        .input-high input {
-            border-color: #d9534f;
-            border-width: 2px;
-        }
-
-        .input-high input:focus {
-            outline-color: #d9534f;
-        }
-
-        .input-medium label {
-            color: #f0ad4e;
-        }
-
-        .input-medium input {
-            border-color: #f0ad4e;
-            border-width: 2px;
-        }
-
-        .input-medium input:focus {
-            outline-color: #f0ad4e;
-        }
-
-        .input-low label {
-            color: #5cb85c;
-        }
-
-        .input-low input {
-            border-color: #5cb85c;
-            border-width: 2px;
-        }
-
-        .input-low input:focus {
-            outline-color: #5cb85c;
-        }
     </style>
 </head>
 
-<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
-
 <body>
+
+    <!-- Loading Indicator -->
+    <div id="loading-overlay">
+        Loading ICU Data...
+    </div>
 
     <h1>ICU Status Dashboard</h1>
 
     <div id="dashboard-container">
+        <!-- Cards will be injected here via JS -->
     </div>
 
     <script>
-        let icuData;
-
         /**
-         * Initializes the LIFF SDK.
-         * @param {string} liffId - The LIFF ID for initialization.
-         * @returns {Promise<boolean>} - True on success, false on failure.
+         * @file icu.html
+         * @description Frontend logic for the ICU Status Dashboard.
+         * Modules: CONFIG, API, UI, APP
          */
-        async function initializeLiff(liffId) {
-            try {
-                await liff.init({ liffId: liffId });
-                console.log("LIFF initialized successfully! 🎉");
-                return true;
-            } catch (err) {
-                console.error(err.code, err.message);
-                return false;
+
+        // --- 1. Configuration ---
+        const CONFIG = {
+            LIFF_ID: "2008398299-D32e7eYB", // Your LIFF ID
+            ENDPOINTS: {
+                GET_STATUS: 'https://dh.tranghos.moph.go.th/icu-backend/icuStatus',
+                UPDATE_RISK: 'https://dh.tranghos.moph.go.th/icu-backend/icuBedRiskUpdate'
+            },
+            URLS: {
+                LOGIN: "https://dh.tranghos.moph.go.th/providerid-login",
+                ERROR_403: "/http_error/403.html", // Assumed path
+                ERROR_500: "/http_error/500.html"  // Assumed path
             }
-        }
+        };
 
-        async function getUserProfile(accessToken) {
-            const url = 'https://api.line.me/v2/profile';
-            try {
-                const response = await fetch(url, {
-                    method: 'GET', // Corresponds to -X GET in cURL
-                    headers: {
-                        // Corresponds to -H 'Authorization: Bearer ...' in cURL
-                        'Authorization': `Bearer ${accessToken}`,
-                    },
-                });
-                // Check if the request was successful
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+        // Global State
+        let currentIcuData = [];
+
+        // --- 2. API Service ---
+        const API = {
+            /**
+             * Initialize LIFF SDK
+             */
+            async initLiff() {
+                try {
+                    await liff.init({ liffId: CONFIG.LIFF_ID });
+                    return true;
+                } catch (err) {
+                    console.error("LIFF Init Failed:", err);
+                    return false;
                 }
-                // Parse the JSON response from the API
-                const profileData = await response.json();
-                return profileData;
-            } catch (error) {
-                // Handle any errors that occurred during the fetch
-                console.error('Could not fetch profile:', error);
-            }
-        }
+            },
 
-        async function getICUData(LineUserId) {
-            const endpointUrl = 'https://dh.tranghos.moph.go.th/icu-backend/icuStatus';
-            const response = await fetch(endpointUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-                // Convert the JavaScript object to a JSON string
-                body: JSON.stringify({
-                    'LineUserId': LineUserId,
-                }),
-            });
-
-            const data = await response.json();
-
-            console.log(response.status);
-
-            if (response.status == 403) {
-                // Redirect to 403.html
-                return false;
-            } else if (response.status == 500 || response.status == 400) {
-                // Redirect to 500.html
-                return false;
-            } else if (response.status == 404) {
-                // Redirect to providerid-login.html
-                window.location.replace("https://dh.tranghos.moph.go.th/providerid-login");
-                // console.log("No user");
-            } else {
-                return data;
-            }
-        }
-
-        async function updateICUData(LineUserId, data) {
-            const endpointUrl = 'https://dh.tranghos.moph.go.th/icu-backend/icuBedRiskUpdate';
-
-            const response = await fetch(endpointUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-                // Convert the JavaScript object to a JSON string
-                body: JSON.stringify({
-                    'LineUserId': LineUserId,
-                    "ward_code": data.ward_code,
-                    "high_risk": data.high_risk,
-                    "medium_risk": data.medium_risk,
-                    "low_risk": data.low_risk
-                }),
-            });
-
-            const updateResult = await response.json();
-        }
-
-        document.addEventListener('DOMContentLoaded', async function () {
-
-            // Line Login
-
-            // Initialize LIFF and check for success
-            const isLiffInitialized = await initializeLiff("2008398299-D32e7eYB");
-
-            if (!isLiffInitialized) {
-                statusMessage.textContent = "Error: Could not initialize login service.";
-                return; // Stop execution if LIFF fails
-            }
-
-            if (!liff.isLoggedIn()) {
-                // Redirect to login
-                const currentUrl = window.location.href.split('?')[0];
-                liff.login({ redirectUri: currentUrl });
-            } else {
-
-                // Get Line Access Token
-                const accessToken = await liff.getAccessToken();
-
-                // Get Line User Profile
-                const lineUserProfile = await getUserProfile(accessToken);
-                const LineUserId = lineUserProfile.userId;
-
-                // 1. Your NEW data
-                icuData = await getICUData(LineUserId);
-
-                // 2. Get the container element
-                const container = document.getElementById('dashboard-container');
-
-                /**
-                 * 3. Function to render the CONTENT of a card (Chart view)
-                 */
-                function getCardContentHTML(ward) {
-                    // Calculate percentages
-                    let highPct = (ward.high_risk / ward.total_beds) * 100;
-                    let mediumPct = (ward.medium_risk / ward.total_beds) * 100;
-                    let lowPct = (ward.low_risk / ward.total_beds) * 100;
-                    let availablePct = (ward.available_beds / ward.total_beds) * 100;
-
-                    return `
-                <h3>${ward.ward_name}</h3>
-                <div class="bed-info">
-                    <div>
-                        <span class="stat-label">Patients</span>
-                        <span class="stat-value">${ward.patient_count}</span>
-                    </div>
-                    <div>
-                        <span class="stat-label">Available</span>
-                        <span class="stat-value">${ward.available_beds}</span>
-                    </div>
-                    <div>
-                        <span class="stat-label">Total Beds</span>
-                        <span class="stat-value">${ward.total_beds}</span>
-                    </div>
-                </div>
-                <h4>Ward Status (Total: ${ward.total_beds} Beds)</h4>
-                <div class="bar-container">
-                    <div class="bar-segment high-risk" style="width: ${highPct}%;" title="High Risk: ${ward.high_risk}">
-                        ${ward.high_risk > 0 ? ward.high_risk : ''}
-                    </div>
-                    <div class="bar-segment medium-risk" style="width: ${mediumPct}%;" title="Medium Risk: ${ward.medium_risk}">
-                        ${ward.medium_risk > 0 ? ward.medium_risk : ''}
-                    </div>
-                    <div class="bar-segment low-risk" style="width: ${lowPct}%;" title="Low Risk: ${ward.low_risk}">
-                        ${ward.low_risk > 0 ? ward.low_risk : ''}
-                    </div>
-                    <div class="bar-segment available-beds" style="width: ${availablePct}%;" title="Available: ${ward.available_beds}">
-                        ${ward.available_beds > 0 ? ward.available_beds : ''}
-                    </div>
-                </div>
-                <div class="legend">
-                    <span><i class="dot high-risk"></i> High Risk</span>
-                    <span><i class="dot medium-risk"></i> Medium Risk</span>
-                    <span><i class="dot low-risk"></i> Low Risk</span>
-                    <span><i class="dot available-beds"></i> Available</span>
-                </div>
-                <div class="card-footer">
-                    <button class="btn btn-primary btn-update" data-ward-id="${ward.ward_code}">Update</button>
-                </div>
-            `;
+            async getUserProfile() {
+                if (!liff.isLoggedIn()) return null;
+                try {
+                    return await liff.getProfile();
+                } catch (err) {
+                    console.error("Profile Fetch Failed:", err);
+                    return null;
                 }
+            },
 
-                /**
-                 * 4. Function to render the INPUT FORM for a card (Update view)
-                 */
-                function getCardFormHTML(ward) {
-                    return `
-                <h3>Update: ${ward.ward_name}</h3>
-                <div class="input-form-container">
-                    
-                    <div class="input-group">
-                        <label>Total Patients (Fixed)</label>
-                        <div class="fixed-total">${ward.patient_count}</div>
-                    </div>
-
-                    <div class="risk-breakdown" style="border-top: 1px solid #eee; padding-top: 15px;">
-                        <div class="input-group input-high">
-                            <label for="input-high-${ward.ward_code}">High</label>
-                            <input type="number" id="input-high-${ward.ward_code}" value="${ward.high_risk}" min="0">
-                        </div>
-                        <div class="input-group input-medium">
-                            <label for="input-medium-${ward.ward_code}">Medium</label>
-                            <input type="number" id="input-medium-${ward.ward_code}" value="${ward.medium_risk}" min="0">
-                        </div>
-                        <div class="input-group input-low">
-                            <label for="input-low-${ward.ward_code}">Low</label>
-                            <input type="number" id="input-low-${ward.ward_code}" value="${ward.low_risk}" min="0">
-                        </div>
-                    </div>
-
-                    <div class="form-actions">
-                        <button class="btn btn-success btn-save" data-ward-id="${ward.ward_code}">Save</button>
-                        <button class="btn btn-secondary btn-cancel" data-ward-id="${ward.ward_code}">Cancel</button>
-                    </div>
-                </div>
-            `;
-                }
-
-                /**
-                 * 5. Function to render a single card
-                 */
-                function renderCard(wardId) {
-                    // Find by ward_code (string matching)
-                    const ward = icuData.find(w => w.ward_code === wardId);
-                    if (ward) {
-                        // Use getElementById with the ward_code
-                        const cardElement = document.getElementById(`card-${ward.ward_code}`);
-                        if (cardElement) {
-                            cardElement.innerHTML = getCardContentHTML(ward);
-                        }
-                    }
-                }
-
-                /**
-                 * 6. Initial Dashboard Render
-                 */
-                function renderDashboard() {
-                    container.innerHTML = ''; // Clear dashboard
-                    icuData.forEach(ward => {
-                        const card = document.createElement('div');
-                        card.className = 'icu-card';
-                        card.id = `card-${ward.ward_code}`; // ID based on ward_code
-                        card.innerHTML = getCardContentHTML(ward);
-                        container.appendChild(card);
+            /**
+             * Fetch ICU data from backend
+             */
+            async fetchIcuData(lineUserId) {
+                try {
+                    const response = await fetch(CONFIG.ENDPOINTS.GET_STATUS, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({ LineUserId: lineUserId }),
                     });
+
+                    if (response.status === 200) {
+                        return await response.json();
+                    } else if (response.status === 403) {
+                        window.location.href = CONFIG.URLS.ERROR_403;
+                    } else if (response.status === 404) {
+                        window.location.href = CONFIG.URLS.LOGIN;
+                    } else {
+                        window.location.href = CONFIG.URLS.ERROR_500;
+                    }
+                    return null; // Stop execution if redirecting
+                } catch (error) {
+                    console.error("Network Error:", error);
+                    alert("Failed to connect to server.");
+                    return null;
+                }
+            },
+
+            /**
+             * Update risk data for a specific ward
+             */
+            async updateWardRisk(lineUserId, wardData) {
+                try {
+                    const response = await fetch(CONFIG.ENDPOINTS.UPDATE_RISK, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            LineUserId: lineUserId,
+                            ward_code: wardData.ward_code,
+                            high_risk: wardData.high_risk,
+                            medium_risk: wardData.medium_risk,
+                            low_risk: wardData.low_risk
+                        }),
+                    });
+                    return await response.json();
+                } catch (error) {
+                    console.error("Update Failed:", error);
+                    alert("Failed to update data.");
+                }
+            }
+        };
+
+        // --- 3. UI Components (Templates) ---
+        const UI = {
+            container: document.getElementById('dashboard-container'),
+            loader: document.getElementById('loading-overlay'),
+
+            showLoader() { this.loader.classList.remove('hidden'); },
+            hideLoader() { this.loader.classList.add('hidden'); },
+
+            /**
+             * Generates HTML for the View Mode (Charts & Stats)
+             */
+            getViewTemplate(ward) {
+                const total = ward.total_beds || 1; // Avoid div by zero
+                const pctHigh = (ward.high_risk / total) * 100;
+                const pctMed = (ward.medium_risk / total) * 100;
+                const pctLow = (ward.low_risk / total) * 100;
+                const pctAvail = (ward.available_beds / total) * 100;
+
+                return `
+                    <h3>${ward.ward_name}</h3>
+                    
+                    <div class="bed-stats-grid">
+                        <div class="stat-box">
+                            <span class="stat-label">Patients</span>
+                            <span class="stat-value">${ward.patient_count}</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Available</span>
+                            <span class="stat-value">${ward.available_beds}</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Total Beds</span>
+                            <span class="stat-value">${ward.total_beds}</span>
+                        </div>
+                    </div>
+
+                    <div class="section-label">Occupancy Visualization</div>
+                    
+                    <div class="progress-bar-container">
+                        <div class="bar-segment bg-high" style="width: ${pctHigh}%;" title="High Risk">
+                            ${ward.high_risk > 0 ? ward.high_risk : ''}
+                        </div>
+                        <div class="bar-segment bg-medium" style="width: ${pctMed}%;" title="Medium Risk">
+                            ${ward.medium_risk > 0 ? ward.medium_risk : ''}
+                        </div>
+                        <div class="bar-segment bg-low" style="width: ${pctLow}%;" title="Low Risk">
+                            ${ward.low_risk > 0 ? ward.low_risk : ''}
+                        </div>
+                        <div class="bar-segment bg-available text-dark" style="width: ${pctAvail}%;" title="Available">
+                            ${ward.available_beds > 0 ? ward.available_beds : ''}
+                        </div>
+                    </div>
+
+                    <div class="legend">
+                        <div class="legend-item"><i class="dot bg-high"></i> High</div>
+                        <div class="legend-item"><i class="dot bg-medium"></i> Med</div>
+                        <div class="legend-item"><i class="dot bg-low"></i> Low</div>
+                        <div class="legend-item"><i class="dot bg-available"></i> Empty</div>
+                    </div>
+
+                    <div class="card-actions">
+                        <button class="btn btn-primary js-btn-edit" data-ward-id="${ward.ward_code}">Update Risk Info</button>
+                    </div>
+                `;
+            },
+
+            /**
+             * Generates HTML for the Edit Mode (Input Forms)
+             */
+            getEditTemplate(ward) {
+                return `
+                    <h3>Update: ${ward.ward_name}</h3>
+                    
+                    <div class="input-form-wrapper">
+                        
+                        <div class="input-group">
+                            <label>Total Patients (Fixed from HOSxP)</label>
+                            <div class="fixed-value-display">${ward.patient_count}</div>
+                        </div>
+
+                        <div class="section-label">Breakdown by Risk</div>
+
+                        <div class="risk-inputs-grid">
+                            <div class="input-group input-high">
+                                <label>High</label>
+                                <input type="number" id="input-high-${ward.ward_code}" value="${ward.high_risk}" min="0">
+                            </div>
+                            <div class="input-group input-medium">
+                                <label>Medium</label>
+                                <input type="number" id="input-medium-${ward.ward_code}" value="${ward.medium_risk}" min="0">
+                            </div>
+                            <div class="input-group input-low">
+                                <label>Low</label>
+                                <input type="number" id="input-low-${ward.ward_code}" value="${ward.low_risk}" min="0">
+                            </div>
+                        </div>
+
+                        <div class="card-actions">
+                            <button class="btn btn-secondary js-btn-cancel" data-ward-id="${ward.ward_code}">Cancel</button>
+                            <button class="btn btn-success js-btn-save" data-ward-id="${ward.ward_code}">Save Changes</button>
+                        </div>
+                    </div>
+                `;
+            },
+
+            renderAll(data) {
+                this.container.innerHTML = '';
+                data.forEach(ward => {
+                    const card = document.createElement('div');
+                    card.className = 'icu-card';
+                    card.id = `card-${ward.ward_code}`;
+                    card.innerHTML = this.getViewTemplate(ward);
+                    this.container.appendChild(card);
+                });
+            },
+
+            updateCardToEditMode(wardId) {
+                const ward = currentIcuData.find(w => w.ward_code === wardId);
+                if (!ward) return;
+                const card = document.getElementById(`card-${wardId}`);
+                if (card) card.innerHTML = this.getEditTemplate(ward);
+            },
+
+            updateCardToViewMode(wardId) {
+                const ward = currentIcuData.find(w => w.ward_code === wardId);
+                if (!ward) return;
+                const card = document.getElementById(`card-${wardId}`);
+                if (card) card.innerHTML = this.getViewTemplate(ward);
+            }
+        };
+
+        // --- 4. Main Logic (Controller) ---
+        const APP = {
+            lineUserId: null,
+
+            async init() {
+                const isLiffReady = await API.initLiff();
+                if (!isLiffReady) {
+                    alert("Failed to load LINE Login.");
+                    return;
                 }
 
-                /**
-                 * 7. Event Listeners (for Clicks)
-                 */
-                container.addEventListener('click', async function (e) {
-                    const target = e.target;
-                    // ward_code is a string now (e.g. "10", "22")
-                    const wardId = target.dataset.wardId;
+                if (!liff.isLoggedIn()) {
+                    liff.login({ redirectUri: window.location.href });
+                    return;
+                }
 
+                const profile = await API.getUserProfile();
+                this.lineUserId = profile.userId;
+
+                await this.loadData();
+                this.attachEventListeners();
+            },
+
+            async loadData() {
+                UI.showLoader();
+                const data = await API.fetchIcuData(this.lineUserId);
+                if (data) {
+                    currentIcuData = data;
+                    UI.renderAll(data);
+                }
+                UI.hideLoader();
+            },
+
+            attachEventListeners() {
+                UI.container.addEventListener('click', async (e) => {
+                    const btn = e.target.closest('button');
+                    if (!btn) return;
+
+                    const wardId = btn.dataset.wardId;
                     if (!wardId) return;
 
-                    const ward = icuData.find(w => w.ward_code === wardId);
-                    const cardElement = document.getElementById(`card-${wardId}`);
-
-                    if (!ward || !cardElement) return;
-
-                    // --- Clicked "Update" button ---
-                    if (target.classList.contains('btn-update')) {
-                        cardElement.innerHTML = getCardFormHTML(ward);
+                    // --- Edit Button ---
+                    if (btn.classList.contains('js-btn-edit')) {
+                        UI.updateCardToEditMode(wardId);
                     }
 
-                    // --- Clicked "Cancel" button ---
-                    if (target.classList.contains('btn-cancel')) {
-                        renderCard(wardId); // Re-render the original content
+                    // --- Cancel Button ---
+                    else if (btn.classList.contains('js-btn-cancel')) {
+                        UI.updateCardToViewMode(wardId);
                     }
 
-                    // --- Clicked "Save" button ---
-                    if (target.classList.contains('btn-save')) {
-                        // Get new values from the form
-                        const newHigh = parseInt(document.getElementById(`input-high-${wardId}`).value) || 0;
-                        const newMedium = parseInt(document.getElementById(`input-medium-${wardId}`).value) || 0;
-                        const newLow = parseInt(document.getElementById(`input-low-${wardId}`).value) || 0;
-
-                        const newRiskTotal = newHigh + newMedium + newLow;
-                        const fixedPatientCount = ward.patient_count;
-
-                        // --- VALIDATION: Check if breakdown matches the fixed total ---
-                        if (newRiskTotal !== fixedPatientCount) {
-                            alert(`Error: Risk breakdown total (${newRiskTotal}) must exactly match the Total Patients (${fixedPatientCount}).\n\nHigh (${newHigh}) + Medium (${newMedium}) + Low (${newLow}) = ${newRiskTotal}`);
-                            return; // Stop execution
-                        }
-
-                        // All validations passed, update the data
-                        ward.high_risk = newHigh;
-                        ward.medium_risk = newMedium;
-                        ward.low_risk = newLow;
-
-                        // Save to Database
-                        await updateICUData(LineUserId, ward);
-
-                        // Re-render the card with the new data
-                        renderCard(wardId);
+                    // --- Save Button ---
+                    else if (btn.classList.contains('js-btn-save')) {
+                        await this.handleSave(wardId);
                     }
                 });
+            },
 
-                // 8. Initial Load
-                renderDashboard();
+            async handleSave(wardId) {
+                const ward = currentIcuData.find(w => w.ward_code === wardId);
+                
+                // Get Input Values
+                const highInput = document.getElementById(`input-high-${wardId}`);
+                const medInput = document.getElementById(`input-medium-${wardId}`);
+                const lowInput = document.getElementById(`input-low-${wardId}`);
+
+                const newHigh = parseInt(highInput.value) || 0;
+                const newMed = parseInt(medInput.value) || 0;
+                const newLow = parseInt(lowInput.value) || 0;
+
+                const totalRiskInput = newHigh + newMed + newLow;
+                const fixedTotalPatients = ward.patient_count;
+
+                // Validation Rule: Breakdown must equal Total Patients in Ward
+                if (totalRiskInput !== fixedTotalPatients) {
+                    alert(`Validation Error:\nThe sum of High, Medium, and Low risk patients (${totalRiskInput}) must equal the total patients in the ward (${fixedTotalPatients}).`);
+                    return;
+                }
+
+                // Update Local State
+                ward.high_risk = newHigh;
+                ward.medium_risk = newMed;
+                ward.low_risk = newLow;
+
+                // Update Backend
+                UI.showLoader();
+                await API.updateWardRisk(this.lineUserId, ward);
+                
+                // Refresh View
+                UI.updateCardToViewMode(wardId);
+                UI.hideLoader();
             }
+        };
+
+        // Start App on DOM Ready
+        document.addEventListener('DOMContentLoaded', () => {
+            APP.init();
         });
+
     </script>
 
 </body>
-
 </html>
