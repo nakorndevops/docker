@@ -14,7 +14,7 @@ RUN npm install
 COPY . .
 
 # Your app binds to port 3000
-EXPOSE 3001
+EXPOSE 3007
 
 # Define the command to run your app
 CMD ["node", "--env-file", "./.env", "index.js"]

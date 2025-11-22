@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 
 import * as fs from "fs";
 
-const port = process.env.PORT;
+const port = process.env.PORT || 3005;
 const userDbApiUrl = process.env.USERDB_API_URL;
 const hosxpApiUrl = process.env.HOSxP_API_URL;
 const userDbApiKey = process.env.USER_DB_API_KEY;

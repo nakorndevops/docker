@@ -11,7 +11,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // --- 1. Configuration & Constants ---
-const DEFAULT_PORT = 3007; // Fallback port if env is missing
+const DEFAULT_PORT = 3000; // Fallback port if env is missing
 const CERT_DIR_NAME = 'cert';
 const SSL_KEY_FILENAME = 'register-frontend.key';
 const SSL_CERT_FILENAME = 'register-frontend.crt';
