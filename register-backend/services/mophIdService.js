@@ -1,21 +1,25 @@
-// services/mophIdService.js
+/**
+ * @file services/mophIdService.js
+ * @description Handles interactions with the MOPH (Ministry of Public Health) ID and Provider ID APIs.
+ */
 
 /**
- * Exchanges an authorization code for an access token.
- * (Based on your getProviderIdAccessToken.js)
+ * Exchanges the temporary authorization code for a user Access Token.
+ * @param {object} params
+ * @param {string} params.authCode - Code received from the frontend (OAuth callback).
+ * @param {string} params.redirectUri - The URI used in the initial login request.
+ * @param {string} params.clientId - MOPH Auth Client ID.
+ * @param {string} params.clientSecret - MOPH Auth Client Secret.
+ * @param {string} params.tokenUrl - URL to fetch the token.
+ * @returns {Promise<object>} The JSON response containing access_token.
  */
-export async function getAccessToken({ code, redirect_uri, client_id, client_secret }) {
-  if (!code || !redirect_uri || !client_id || !client_secret) {
-    throw new Error('getAccessToken: Missing required parameters.');
-  }
-
-  const tokenUrl = 'https://moph.id.th/api/v1/token';
+export async function exchangeCodeForAccessToken({ authCode, redirectUri, clientId, clientSecret, tokenUrl }) {
   const bodyParams = new URLSearchParams({
     grant_type: 'authorization_code',
-    code,
-    redirect_uri,
-    client_id,
-    client_secret,
+    code: authCode,
+    redirect_uri: redirectUri,
+    client_id: clientId,
+    client_secret: clientSecret,
   });
 
   try {
@@ -27,32 +31,34 @@ export async function getAccessToken({ code, redirect_uri, client_id, client_sec
       },
       body: bodyParams,
     });
+
     if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`MOPH Token API failed with status ${response.status}: ${errorBody}`);
+      const errorText = await response.text();
+      throw new Error(`MOPH Auth Token API Error (${response.status}): ${errorText}`);
     }
+
     return await response.json();
   } catch (error) {
-    console.error('Error fetching access token:', error.message);
+    console.error('[MOPH Service] Failed to get access token:', error.message);
     throw error;
   }
 }
 
 /**
- * Retrieves a service token from the MOPH API.
- * (Based on your getProviderIdServiceToken.js)
+ * Requests a Service Token required to access Provider Profile APIs.
+ * @param {object} params
+ * @param {string} params.clientId - Service Client ID.
+ * @param {string} params.clientSecret - Service Client Secret.
+ * @param {string} params.userAccessToken - The user's access token retrieved previously.
+ * @param {string} params.serviceTokenUrl - URL to fetch the service token.
+ * @returns {Promise<object>} The JSON response containing the service access_token.
  */
-export async function getServiceToken({ client_id, secret_key, token }) {
-  if (!client_id || !secret_key || !token) {
-    throw new Error('getServiceToken: Missing required parameters.');
-  }
-
-  const serviceTokenUrl = 'https://provider.id.th/api/v1/services/token';
-  const requestBody = {
+export async function getServiceToken({ clientId, clientSecret, userAccessToken, serviceTokenUrl }) {
+  const payload = {
     token_by: 'Health ID',
-    client_id,
-    secret_key,
-    token,
+    client_id: clientId,
+    secret_key: clientSecret,
+    token: userAccessToken,
   };
 
   try {
@@ -62,35 +68,37 @@ export async function getServiceToken({ client_id, secret_key, token }) {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(payload),
     });
+
     if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`MOPH Service Token API failed with status ${response.status}: ${errorBody}`);
+      const errorText = await response.text();
+      throw new Error(`MOPH Service Token API Error (${response.status}): ${errorText}`);
     }
+
     return await response.json();
   } catch (error) {
-    console.error('Error requesting service token:', error.message);
+    console.error('[MOPH Service] Failed to get service token:', error.message);
     throw error;
   }
 }
 
 /**
- * Fetches a user profile from the provider's service API.
- * (Based on your getProviderIdProfile.js)
+ * Fetches the Provider Profile (Organization Data).
+ * @param {object} params
+ * @param {string} params.serviceAccessToken - Token obtained from getServiceToken.
+ * @param {string} params.clientId - Service Client ID.
+ * @param {string} params.clientSecret - Service Client Secret.
+ * @param {string} params.profileUrl - URL to fetch the profile.
+ * @returns {Promise<object>} The provider profile data.
  */
-export async function getProviderProfile({ accessToken, clientId, secretKey }) {
-  if (!accessToken || !clientId || !secretKey) {
-    throw new Error('getProviderProfile: Missing required credentials.');
-  }
-
-  const profileUrl = 'https://provider.id.th/api/v1/services/profile';
+export async function fetchProviderProfile({ serviceAccessToken, clientId, clientSecret, profileUrl }) {
   const headers = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'Authorization': `Bearer ${accessToken}`,
+    'Authorization': `Bearer ${serviceAccessToken}`,
     'client-id': clientId,
-    'secret-key': secretKey,
+    'secret-key': clientSecret,
   };
 
   try {
@@ -98,13 +106,15 @@ export async function getProviderProfile({ accessToken, clientId, secretKey }) {
       method: 'GET',
       headers: headers,
     });
+
     if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`MOPH Profile API failed with status ${response.status}: ${errorBody}`);
+      const errorText = await response.text();
+      throw new Error(`MOPH Profile API Error (${response.status}): ${errorText}`);
     }
+
     return await response.json();
   } catch (error) {
-    console.error('Error fetching provider profile:', error.message);
+    console.error('[MOPH Service] Failed to fetch profile:', error.message);
     throw error;
   }
 }

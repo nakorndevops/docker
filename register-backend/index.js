@@ -1,46 +1,69 @@
+/**
+ * @file index.js
+ * @description Entry point for the Register Backend Service.
+ */
+
 import express from "express";
 import https from "https";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-// --- Custom Module Imports ---
-import { env } from "./config/env.js"; // Validates and loads envs
+// --- Imports ---
+import { config } from "./config/env.js";
 import { createLinkAccountHandler } from "./controllers/linkAccountController.js";
-import { createUserFoundHandler } from "./controllers/userController.js"; // 👈 Import new controller
-import { createApiRouter } from "./routes/api.js"; // 👈 Import renamed router
+import { createUserFoundHandler } from "./controllers/userController.js";
+import { createConfigHandler } from "./controllers/configController.js";
+import { createApiRouter } from "./routes/api.js";
 
-// --- Setup ---
+// --- Constants & Setup ---
 const app = express();
-app.use(express.json()); // Middleware to parse JSON bodies
-
-// --- Path Setup (for ES Modules) ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// --- HTTPS Server Options ---
-const options = {
-  key: fs.readFileSync(path.join(__dirname, "cert", "register-backend.key")),
-  cert: fs.readFileSync(path.join(__dirname, "cert", "register-backend.crt")),
-};
+// --- Middleware ---
+app.use(express.json());
 
-// --- ✨ Dependency Injection (Wiring) ✨ ---
+// --- SSL Configuration ---
+// Fail fast if certificates are missing
+const sslOptions = (() => {
+  try {
+    const certPath = path.join(__dirname, "cert");
+    return {
+      key: fs.readFileSync(path.join(certPath, "register-backend.key")),
+      cert: fs.readFileSync(path.join(certPath, "register-backend.crt")),
+    };
+  } catch (err) {
+    console.error("❌ [FATAL] Could not load SSL certificates:", err.message);
+    process.exit(1);
+  }
+})();
 
-// 1. Create all handlers, passing in the config they need
-const linkAccountHandler = createLinkAccountHandler(env);
-const userFoundHandler = createUserFoundHandler(env); // 👈 Create new handler
+// --- Dependency Injection & Wiring ---
 
-// 2. Create the main router, passing in all handlers
+// 1. Initialize Controllers with Config
+const linkAccountHandler = createLinkAccountHandler(config);
+const userFoundHandler = createUserFoundHandler(config);
+const configHandler = createConfigHandler(config);
+
+// 2. Initialize Router with Controllers
 const apiRouter = createApiRouter({ 
   linkAccountHandler, 
-  userFoundHandler 
+  userFoundHandler,
+  configHandler 
 });
 
-// 3. Mount the main router to the app
+// 3. Mount Routes
 app.use("/", apiRouter);
 
 // --- Server Start ---
-const server = https.createServer(options, app);
-server.listen(env.port, () => {
-  console.log(`🚀 HTTPS Server listening on PORT: ${env.port}`);
+const server = https.createServer(sslOptions, app);
+
+server.listen(config.app.port, () => {
+  console.log("===============================================");
+  console.log(`🚀 Register Backend Service Started`);
+  console.log(`👉 Environment: ${config.app.nodeEnv}`);
+  console.log(`👉 Port: ${config.app.port}`);
+  console.log(`👉 Hospital Code Target: ${config.app.hospitalCode}`);
+  console.log("===============================================");
 });

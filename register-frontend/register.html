@@ -1,358 +1,181 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registration Status</title>
-    <!-- Import LIFF SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
 
     <style>
-        /* --- CSS Variables --- */
         :root {
-            --success-color: #28a745;
-            --error-color: #dc3545;
-            --text-color: #333333;
-            --text-muted: #6c757d;
-            --bg-color: #f4f6f8;
-            --card-bg: #ffffff;
-            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --success-color: #28a745; --error-color: #dc3545; --text-color: #333333;
+            --text-muted: #6c757d; --bg-color: #f4f6f8; --card-bg: #ffffff;
         }
-
-        /* --- Base Layout --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
+            background-color: var(--bg-color); display: flex; justify-content: center;
+            align-items: center; min-height: 100vh; margin: 0; padding: 20px;
         }
-
         .card {
-            background-color: var(--card-bg);
-            padding: 2.5rem;
-            border-radius: 12px;
-            box-shadow: var(--shadow);
-            text-align: center;
-            max-width: 500px;
-            width: 100%;
-            display: none;
-            /* Hidden by default */
-            animation: fadeIn 0.5s ease-out;
+            background-color: var(--card-bg); padding: 2.5rem; border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); text-align: center; max-width: 500px; width: 100%;
+            display: none; animation: fadeIn 0.5s ease-out;
         }
-
-        .card.visible {
-            display: block;
-        }
-
-        /* --- Typography --- */
-        h1 {
-            margin-top: 0;
-            font-size: 1.75rem;
-            margin-bottom: 1rem;
-        }
-
-        .text-success {
-            color: var(--success-color);
-        }
-
-        .text-error {
-            color: var(--error-color);
-        }
-
-        .error-message {
-            color: var(--text-muted);
-            font-size: 1.1rem;
-            margin-bottom: 1.5rem;
-            line-height: 1.5;
-        }
-
-        /* --- Info Grid for User Data --- */
+        .card.visible { display: block; }
+        h1 { margin-top: 0; font-size: 1.75rem; margin-bottom: 1rem; }
+        .text-success { color: var(--success-color); } .text-error { color: var(--error-color); }
+        .error-message { color: var(--text-muted); font-size: 1.1rem; margin-bottom: 1.5rem; line-height: 1.5; }
         .info-grid {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 0.75rem 1.5rem;
-            text-align: left;
-            margin: 1.5rem auto;
-            width: fit-content;
-            font-size: 1rem;
+            display: grid; grid-template-columns: auto 1fr; gap: 0.75rem 1.5rem;
+            text-align: left; margin: 1.5rem auto; width: fit-content; font-size: 1rem;
         }
-
-        .info-label {
-            font-weight: 600;
-            color: var(--text-color);
-        }
-
-        .info-value {
-            color: var(--text-muted);
-            text-align: right;
-        }
-
-        /* --- Buttons --- */
+        .info-label { font-weight: 600; color: var(--text-color); }
+        .info-value { color: var(--text-muted); text-align: right; }
         .btn {
-            border: none;
-            padding: 12px 24px;
-            font-size: 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: opacity 0.2s ease;
-            font-weight: 600;
-            color: white;
-            text-decoration: none;
-            display: inline-block;
-            margin-top: 1rem;
+            border: none; padding: 12px 24px; font-size: 1rem; border-radius: 6px;
+            cursor: pointer; transition: opacity 0.2s ease; font-weight: 600; color: white;
+            text-decoration: none; display: inline-block; margin-top: 1rem;
         }
-
-        .btn:hover {
-            opacity: 0.9;
-        }
-
-        .btn-success {
-            background-color: var(--success-color);
-        }
-
-        .btn-error {
-            background-color: var(--error-color);
-        }
-
-        .btn-primary {
-            background-color: #007bff;
-        }
-
-        /* --- Loading Spinner --- */
-        .loading-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
+        .btn:hover { opacity: 0.9; }
+        .btn-success { background-color: var(--success-color); }
+        .btn-error { background-color: var(--error-color); }
+        .loading-container { display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #007bff;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 1rem;
+            border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%;
+            width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 1rem;
         }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-
 <body>
-
-    <!-- 1. Loading State -->
     <div id="loading-view" class="loading-container">
         <div class="spinner"></div>
-        <p>Processing registration...</p>
+        <p id="loading-text">Loading system...</p>
     </div>
 
-    <!-- 2. Success State -->
     <div id="success-view" class="card">
         <h1 class="text-success">Registration Successful! 🎉</h1>
         <div class="info-grid">
-            <div class="info-label">Name</div>
-            <div id="display-name" class="info-value">-</div>
-
-            <div class="info-label">Position</div>
-            <div id="display-position" class="info-value">-</div>
-
-            <div class="info-label">License ID</div>
-            <div id="display-license" class="info-value">-</div>
-
-            <div class="info-label">Hospital</div>
-            <div id="display-hospital" class="info-value">-</div>
+            <div class="info-label">Name</div><div id="display-name" class="info-value">-</div>
+            <div class="info-label">Position</div><div id="display-position" class="info-value">-</div>
+            <div class="info-label">License ID</div><div id="display-license" class="info-value">-</div>
+            <div class="info-label">Hospital</div><div id="display-hospital" class="info-value">-</div>
         </div>
         <button class="btn btn-success" onclick="liff.closeWindow()">Close Window</button>
     </div>
 
-    <!-- 3. Error State -->
     <div id="error-view" class="card">
         <h1 class="text-error">Registration Failed</h1>
         <p id="error-message-text" class="error-message">Unknown error occurred.</p>
         <a href="/providerid-login" class="btn btn-error">Try Again</a>
     </div>
 
+    <script>
+        const CONFIG = {
+            LOGIN_PAGE_URL: "https://dh.tranghos.moph.go.th/providerid-login?origin=register",
+            API_ENDPOINTS: {
+                CONFIG: "https://dh.tranghos.moph.go.th/register-backend/config",
+                LINK_ACCOUNT: "https://dh.tranghos.moph.go.th/register-backend/linkAccount"
+            }
+        };
+
+        const ui = {
+            loadingView: document.getElementById('loading-view'),
+            loadingText: document.getElementById('loading-text'),
+            successView: document.getElementById('success-view'),
+            errorView: document.getElementById('error-view'),
+            fields: {
+                name: document.getElementById('display-name'),
+                position: document.getElementById('display-position'),
+                license: document.getElementById('display-license'),
+                hospital: document.getElementById('display-hospital'),
+                errorMessage: document.getElementById('error-message-text')
+            },
+            updateLoading(text) { this.loadingText.textContent = text; },
+            showSuccess(data) {
+                this.loadingView.style.display = 'none';
+                this.errorView.classList.remove('visible');
+                const org = data.organization && data.organization[0] ? data.organization[0] : {};
+                this.fields.name.textContent = data.name_th || "N/A";
+                this.fields.position.textContent = org.position || "N/A";
+                this.fields.license.textContent = org.license_id || "N/A";
+                this.fields.hospital.textContent = org.hname_th || "N/A";
+                this.successView.classList.add('visible');
+            },
+            showError(message) {
+                this.loadingView.style.display = 'none';
+                this.successView.classList.remove('visible');
+                this.fields.errorMessage.textContent = message;
+                this.errorView.classList.add('visible');
+            }
+        };
+
+        async function fetchBackendConfig() {
+            const res = await fetch(CONFIG.API_ENDPOINTS.CONFIG);
+            if (!res.ok) throw new Error("Failed to load configuration");
+            return await res.json();
+        }
+
+        async function linkUserAccount(payload) {
+            try {
+                const response = await fetch(CONFIG.API_ENDPOINTS.LINK_ACCOUNT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const result = await response.json();
+                return response.ok ? { success: true, data: result.data || result } : { success: false, error: result.error || `Status: ${response.status}` };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const providerIdCode = urlParams.get('code');
+
+            if (!providerIdCode) {
+                window.location.replace(CONFIG.LOGIN_PAGE_URL);
+                return;
+            }
+
+            try {
+                // 1. Fetch Config
+                ui.updateLoading("Loading configuration...");
+                const backendConfig = await fetchBackendConfig();
+
+                // 2. Init LIFF
+                ui.updateLoading("Initializing LINE...");
+                await liff.init({ liffId: backendConfig.registerLiffId });
+
+                // 3. Check Login
+                if (!liff.isLoggedIn()) {
+                    liff.login({ redirectUri: window.location.href });
+                    return;
+                }
+
+                // 4. Link Account
+                ui.updateLoading("Processing registration...");
+                const profile = await liff.getProfile();
+                const currentUrl = window.location.href.split('?')[0];
+
+                const result = await linkUserAccount({
+                    LineUserId: profile.userId,
+                    providerIdCode: providerIdCode,
+                    redirect_uri: currentUrl
+                });
+
+                if (result.success) {
+                    ui.showSuccess(result.data);
+                } else {
+                    ui.showError(result.error);
+                }
+            } catch (err) {
+                console.error(err);
+                ui.showError("Initialization failed: " + err.message);
+            }
+        });
+    </script>
 </body>
-
-<script>
-    /**
-     * @file register.html
-     * @description Handles the callback from ProviderID OAuth, gets LINE profile, and links the account.
-     */
-
-    // --- 1. Configuration & Constants ---
-    const CONFIG = {
-        LIFF_ID: "2008398299-jXq383Lz",
-        LOGIN_PAGE_URL: "https://dh.tranghos.moph.go.th/providerid-login?origin=register",
-        API_ENDPOINTS: {
-            LINK_ACCOUNT: "https://dh.tranghos.moph.go.th/register-backend/linkAccount"
-        }
-    };
-
-    // --- 2. UI Helpers ---
-    const ui = {
-        loadingView: document.getElementById('loading-view'),
-        successView: document.getElementById('success-view'),
-        errorView: document.getElementById('error-view'),
-
-        fields: {
-            name: document.getElementById('display-name'),
-            position: document.getElementById('display-position'),
-            license: document.getElementById('display-license'),
-            hospital: document.getElementById('display-hospital'),
-            errorMessage: document.getElementById('error-message-text')
-        },
-
-        showSuccess(data) {
-            this.loadingView.style.display = 'none';
-            this.errorView.classList.remove('visible');
-
-            // Populate fields safely
-            const org = data.organization && data.organization[0] ? data.organization[0] : {};
-
-            this.fields.name.textContent = data.name_th || "N/A";
-            this.fields.position.textContent = org.position || "N/A";
-            this.fields.license.textContent = org.license_id || "N/A";
-            this.fields.hospital.textContent = org.hname_th || "N/A";
-
-            this.successView.classList.add('visible');
-        },
-
-        showError(message) {
-            this.loadingView.style.display = 'none';
-            this.successView.classList.remove('visible');
-            this.fields.errorMessage.textContent = message;
-            this.errorView.classList.add('visible');
-        }
-    };
-
-    // --- 3. Core Services ---
-
-    /**
-     * Initializes LIFF.
-     */
-    async function initializeLiff(liffId) {
-        try {
-            await liff.init({ liffId });
-            return true;
-        } catch (err) {
-            console.error("LIFF Init Failed:", err);
-            return false;
-        }
-    }
-
-    /**
-     * Sends the linkage request to the backend.
-     */
-    async function linkUserAccount(payload) {
-        try {
-            const response = await fetch(CONFIG.API_ENDPOINTS.LINK_ACCOUNT, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-                return { success: true, data: result.data };
-            } else {
-                // Backend should return { error: "Message" }
-                return { success: false, error: result.error || `Server Status: ${response.status}` };
-            }
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    }
-
-    // --- 4. Main Flow ---
-
-    document.addEventListener('DOMContentLoaded', async function () {
-
-        // Step 1: Validate Query Parameters (OAuth Code)
-        const urlParams = new URLSearchParams(window.location.search);
-        const providerIdCode = urlParams.get('code');
-
-        // If no code is present, the user likely accessed this page directly -> Redirect to login
-        if (!providerIdCode) {
-            window.location.replace(CONFIG.LOGIN_PAGE_URL);
-            return;
-        }
-
-        // Step 2: Initialize LIFF
-        const isLiffReady = await initializeLiff(CONFIG.LIFF_ID);
-        if (!isLiffReady) {
-            ui.showError("Failed to initialize LINE service. Please close and try again.");
-            return;
-        }
-
-        // Step 3: Enforce Login
-        if (!liff.isLoggedIn()) {
-            // Redirect to LINE Login, coming back to this same URL (preserving the code param)
-            liff.login({ redirectUri: window.location.href });
-            return;
-        }
-
-        try {
-            // Step 4: Get User Info
-            const profile = await liff.getProfile();
-            const lineUserId = profile.userId;
-
-            // Get the base URL (without query params) to use as the redirect_uri verifier
-            // Note: This must match exactly what was sent in providerid-login.html
-            const currentUrl = window.location.href.split('?')[0];
-
-            // Step 5: Call Backend API
-            const requestData = {
-                LineUserId: lineUserId,
-                providerIdCode: providerIdCode,
-                redirect_uri: currentUrl
-            };
-
-            const result = await linkUserAccount(requestData);
-
-            if (result.success) {
-                ui.showSuccess(result.data);
-            } else {
-                ui.showError(result.error);
-            }
-
-        } catch (err) {
-            console.error("Process Error:", err);
-            ui.showError("An unexpected error occurred: " + err.message);
-        }
-    });
-
-</script>
-
 </html>

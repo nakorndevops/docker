@@ -1,36 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ProviderID Login</title>
-    <!-- Import LIFF SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
 
     <style>
-        /* --- CSS Variables for Theming --- */
+        /* --- CSS Variables --- */
         :root {
             --primary-color: #04703c;
-            /* Dark Green */
             --secondary-color: #109c62;
-            /* Light Green */
             --accent-color: #59c98b;
-            /* Text Highlight */
             --bg-gradient: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
             --text-white: #ffffff;
-            --text-dark: #333333;
             --error-color: #ff4d4d;
-            --shadow-sm: 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             --shadow-md: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         }
 
-        /* --- Reset & Base Styles --- */
-        * {
-            box-sizing: border-box;
-        }
-
+        * { box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg-gradient);
@@ -43,16 +31,10 @@
             color: var(--text-white);
         }
 
-        .container {
-            text-align: center;
-            width: 100%;
-            max-width: 400px;
-        }
+        .container { text-align: center; width: 100%; max-width: 400px; }
 
-        /* --- Card Components --- */
         .login-card {
             display: none;
-            /* Hidden by default */
             padding: 2rem;
             background-color: var(--text-white);
             border-radius: 1rem;
@@ -62,270 +44,167 @@
             width: 100%;
             cursor: pointer;
         }
+        .login-card.visible { display: inline-block; animation: fadeIn 0.5s ease-out; }
+        .login-card:hover { transform: translateY(-5px); }
 
-        .login-card.visible {
-            display: inline-block;
-            animation: fadeIn 0.5s ease-out;
-        }
+        .content-wrapper { display: flex; flex-direction: column; align-items: center; }
+        .logo { width: 100%; max-width: 200px; height: auto; margin-bottom: 1.5rem; }
+        .message { font-size: 1.25rem; font-weight: 600; color: var(--accent-color); margin: 0; }
 
-        .login-card:hover {
-            box-shadow: var(--shadow-lg);
-            transform: translateY(-5px);
-        }
-
-        .content-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .logo {
-            width: 100%;
-            max-width: 200px;
-            height: auto;
-            margin-bottom: 1.5rem;
-        }
-
-        .message {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--accent-color);
-            margin: 0;
-        }
-
-        /* --- Status & Feedback --- */
         #status-container {
-            font-size: 1.25rem;
-            font-weight: 600;
-            min-height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 10px;
+            font-size: 1.25rem; font-weight: 600; min-height: 50px;
+            display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px;
         }
-
         .error-msg {
-            color: var(--text-white);
-            background-color: rgba(255, 77, 77, 0.2);
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid var(--error-color);
-            font-size: 1rem;
+            color: var(--text-white); background-color: rgba(255, 77, 77, 0.2);
+            padding: 10px; border-radius: 8px; border: 1px solid var(--error-color); font-size: 1rem;
         }
+        .success-msg { color: var(--text-white); font-size: 1.1rem; }
 
-        .success-msg {
-            color: var(--text-white);
-            font-size: 1.1rem;
-        }
-
-        /* --- Animations --- */
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Spinner */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top: 4px solid #ffffff;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
+            border: 4px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top: 4px solid #ffffff;
+            width: 30px; height: 30px; animation: spin 1s linear infinite;
         }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-
 <body>
-
     <div class="container">
-        <!-- Status / Loading Area -->
         <div id="status-container">
             <div class="spinner"></div>
-            <p>Loading...</p>
+            <p>Loading Configuration...</p>
         </div>
 
-        <!-- Login Card (Clickable) -->
         <a id="provider-login-link" rel="noopener noreferrer" class="login-card">
             <div class="content-wrapper">
-                <!-- Ensure this path matches your file server -->
                 <img src="/image/provider.png" alt="ProviderID Logo" class="logo">
-                <p class="message">
-                    ลงทะเบียนด้วย ProviderID
-                </p>
+                <p class="message">ลงทะเบียนด้วย ProviderID</p>
             </div>
         </a>
     </div>
 
-</body>
+    <script>
+        // --- 1. State & Constants ---
+        let CONFIG = {
+            REDIRECT_PATH: "/register",
+            API_ENDPOINTS: {
+                CONFIG: "https://dh.tranghos.moph.go.th/register-backend/config",
+                USER_FOUND: "https://dh.tranghos.moph.go.th/register-backend/userFound"
+            },
+            OAUTH_BASE_URL: "https://moph.id.th/oauth/redirect"
+        };
 
-<script>
-    /**
-     * @file providerid-login.html
-     * @description logic for checking user registration status and redirecting to ProviderID OAuth.
-     */
+        const ui = {
+            statusContainer: document.getElementById('status-container'),
+            loginLink: document.getElementById('provider-login-link'),
 
-    // --- 1. Configuration & Constants ---
-    const CONFIG = {
-        LIFF_ID: "2008398299-eV59j9Vd",
-        CLIENT_ID: "0195360c-3c82-7d2a-9cdd-8ce44d3f1113",
-        REDIRECT_PATH: "/register", // Relative path for redirect after OAuth
-        API_ENDPOINTS: {
-            USER_FOUND: "https://dh.tranghos.moph.go.th/register-backend/userFound"
-        },
-        OAUTH_BASE_URL: "https://moph.id.th/oauth/redirect"
-    };
-
-    // --- 2. UI Helpers ---
-    const ui = {
-        statusContainer: document.getElementById('status-container'),
-        loginLink: document.getElementById('provider-login-link'),
-
-        showLoading(message = "Loading...") {
-            this.statusContainer.style.display = 'flex';
-            this.statusContainer.innerHTML = `<div class="spinner"></div><p>${message}</p>`;
-            this.loginLink.classList.remove('visible');
-        },
-
-        showError(message) {
-            this.statusContainer.style.display = 'block';
-            this.statusContainer.innerHTML = `<div class="error-msg">⚠️ ${message}</div>`;
-            this.loginLink.classList.remove('visible');
-        },
-
-        showSuccess(message) {
-            this.statusContainer.style.display = 'block';
-            this.statusContainer.innerHTML = `<div class="success-msg">✅ ${message}</div>`;
-            this.loginLink.classList.remove('visible');
-        },
-
-        showLoginButton(oauthUrl) {
-            this.statusContainer.style.display = 'none'; // Hide loading
-            this.loginLink.href = oauthUrl;
-            this.loginLink.classList.add('visible');
-        }
-    };
-
-    // --- 3. Core Services ---
-
-    /**
-     * Initializes the LIFF SDK.
-     * @param {string} liffId - The LIFF ID.
-     * @returns {Promise<boolean>} True on success.
-     */
-    async function initializeLiff(liffId) {
-        try {
-            await liff.init({ liffId });
-            console.log("LIFF initialized successfully");
-            return true;
-        } catch (err) {
-            console.error("LIFF Init Error:", err);
-            return false;
-        }
-    }
-
-    /**
-     * Fetches the backend to see if the user is already registered.
-     * @param {string} lineUserId 
-     * @returns {Promise<{found: boolean, data: any}>}
-     */
-    async function checkRegistrationStatus(lineUserId) {
-        try {
-            const response = await fetch(CONFIG.API_ENDPOINTS.USER_FOUND, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ LineUserId: lineUserId }),
-            });
-
-            // 200 = Found, 404 = Not Found
-            const data = await response.json();
-            return {
-                status: response.status,
-                data: data
-            };
-        } catch (error) {
-            throw new Error(`Network error checking registration: ${error.message}`);
-        }
-    }
-
-    /**
-     * Constructs the ProviderID OAuth URL.
-     */
-    function getOAuthUrl() {
-        // Construct absolute redirect URI based on current origin + config path
-        // e.g. https://dh.tranghos.moph.go.th/register
-        const origin = window.location.origin;
-        const redirectUri = `${origin}${CONFIG.REDIRECT_PATH}`;
-
-        return `${CONFIG.OAUTH_BASE_URL}?client_id=${CONFIG.CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code`;
-    }
-
-    // --- 4. Main Application Flow ---
-
-    document.addEventListener('DOMContentLoaded', async function () {
-
-        // Step 1: Initialize LIFF
-        ui.showLoading("Initializing Line Service...");
-        const isLiffReady = await initializeLiff(CONFIG.LIFF_ID);
-
-        if (!isLiffReady) {
-            ui.showError("Failed to connect to LINE. Please reload.");
-            return;
-        }
-
-        // Step 2: Check Login Status
-        if (!liff.isLoggedIn()) {
-            ui.showLoading("Redirecting to login...");
-            // Log in and redirect back to this page
-            liff.login({ redirectUri: window.location.href });
-            return;
-        }
-
-        try {
-            // Step 3: Get User Profile
-            ui.showLoading("Verifying account...");
-            const profile = await liff.getProfile();
-            const lineUserId = profile.userId;
-
-            // Step 4: Check if already registered in backend
-            const result = await checkRegistrationStatus(lineUserId);
-
-            if (result.status === 200) {
-                // User exists
-                ui.showSuccess("You are already registered.");
-            } else if (result.status === 404) {
-                // User not found -> Show Login/Link Button
-                const oauthUrl = getOAuthUrl();
-                ui.showLoginButton(oauthUrl);
-            } else {
-                // Other API error
-                ui.showError(result.data?.data || "Unknown server response.");
+            showLoading(message = "Loading...") {
+                this.statusContainer.style.display = 'flex';
+                this.statusContainer.innerHTML = `<div class="spinner"></div><p>${message}</p>`;
+                this.loginLink.classList.remove('visible');
+            },
+            showError(message) {
+                this.statusContainer.style.display = 'block';
+                this.statusContainer.innerHTML = `<div class="error-msg">⚠️ ${message}</div>`;
+                this.loginLink.classList.remove('visible');
+            },
+            showSuccess(message) {
+                this.statusContainer.style.display = 'block';
+                this.statusContainer.innerHTML = `<div class="success-msg">✅ ${message}</div>`;
+                this.loginLink.classList.remove('visible');
+            },
+            showLoginButton(oauthUrl) {
+                this.statusContainer.style.display = 'none';
+                this.loginLink.href = oauthUrl;
+                this.loginLink.classList.add('visible');
             }
+        };
 
-        } catch (error) {
-            console.error(error);
-            ui.showError("An unexpected error occurred. Please try again later.");
+        // --- 2. Initialization Logic ---
+
+        async function fetchBackendConfig() {
+            try {
+                const res = await fetch(CONFIG.API_ENDPOINTS.CONFIG);
+                if (!res.ok) throw new Error("Failed to load server config");
+                const data = await res.json();
+                return data; // Expected: { loginLiffId, registerLiffId, clientId }
+            } catch (err) {
+                console.error(err);
+                throw new Error("Could not connect to backend service.");
+            }
         }
-    });
 
-</script>
+        async function initializeLiff(liffId) {
+            try {
+                await liff.init({ liffId });
+                return true;
+            } catch (err) {
+                console.error("LIFF Init Error:", err);
+                return false;
+            }
+        }
 
+        async function checkRegistrationStatus(lineUserId) {
+            try {
+                const response = await fetch(CONFIG.API_ENDPOINTS.USER_FOUND, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ LineUserId: lineUserId }),
+                });
+                return { status: response.status, data: await response.json() };
+            } catch (error) {
+                throw new Error(`Network error: ${error.message}`);
+            }
+        }
+
+        function getOAuthUrl(clientId) {
+            const origin = window.location.origin;
+            const redirectUri = `${origin}${CONFIG.REDIRECT_PATH}`;
+            return `${CONFIG.OAUTH_BASE_URL}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code`;
+        }
+
+        // --- 3. Main Flow ---
+        document.addEventListener('DOMContentLoaded', async function () {
+            try {
+                // 1. Load Config
+                ui.showLoading("Loading System Config...");
+                const backendConfig = await fetchBackendConfig();
+                
+                // 2. Init LIFF
+                ui.showLoading("Initializing Line Service...");
+                const isLiffReady = await initializeLiff(backendConfig.loginLiffId);
+                if (!isLiffReady) {
+                    ui.showError("Failed to connect to LINE.");
+                    return;
+                }
+
+                // 3. Check Login
+                if (!liff.isLoggedIn()) {
+                    ui.showLoading("Redirecting to login...");
+                    liff.login({ redirectUri: window.location.href });
+                    return;
+                }
+
+                // 4. App Logic
+                ui.showLoading("Verifying account...");
+                const profile = await liff.getProfile();
+                const result = await checkRegistrationStatus(profile.userId);
+
+                if (result.status === 200) {
+                    ui.showSuccess("You are already registered.");
+                } else if (result.status === 404) {
+                    const oauthUrl = getOAuthUrl(backendConfig.clientId);
+                    ui.showLoginButton(oauthUrl);
+                } else {
+                    ui.showError(result.data?.error || "Unknown server response.");
+                }
+
+            } catch (error) {
+                console.error(error);
+                ui.showError(error.message);
+            }
+        });
+    </script>
+</body>
 </html>

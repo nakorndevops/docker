@@ -1,120 +1,125 @@
-// controllers/linkAccountController.js
-import * as mophIdService from "../services/mophIdService.js";
+/**
+ * @file controllers/linkAccountController.js
+ * @description Handles the complex orchestration of linking a Provider ID to a Line Account.
+ */
+
+import * as mophService from "../services/mophIdService.js";
 import * as hosxpService from "../services/hosxpService.js";
 import * as userService from "../services/userService.js";
 
-// This "factory" function creates the handler and injects the config
-export function createLinkAccountHandler(env) {
-
-  // This is the actual route handler logic
+/**
+ * Factory function to inject configuration dependencies.
+ * @param {object} config - The full application configuration object.
+ */
+export function createLinkAccountHandler(config) {
+  
   return async (req, res) => {
-    const { LineUserId, providerIdCode, redirect_uri } = req.body;
+    // 1. Input Validation
+    // 'providerIdCode' is the OAuth authorization code from the frontend
+    const { LineUserId: lineUserId, providerIdCode: authCode, redirect_uri: redirectUri } = req.body;
 
-    // 1. Validate Input
-    if (!LineUserId || !providerIdCode || !redirect_uri) {
-      return res.status(400).json({ error: "Incomplete request parameters: LineUserId, providerIdCode, and redirect_uri are required." });
-    }
-    if (!env.clientId) {
-      console.error("Server configuration error: CLIENT_ID is not set.");
-      return res.status(500).json({ error: 'Server configuration error.' });
+    if (!lineUserId || !authCode || !redirectUri) {
+      return res.status(400).json({ 
+        error: "Missing required parameters: LineUserId, providerIdCode, or redirect_uri." 
+      });
     }
 
     try {
-      // 2. Get Access Token
-      console.log('Attempting to get access token...');
-      const tokenParams = {
-        code: providerIdCode,
-        redirect_uri: redirect_uri,
-        client_id: env.clientId,
-        client_secret: env.clientSecret,
-      };
-      const tokenData = await mophIdService.getAccessToken(tokenParams);
-      const access_token = tokenData.data.access_token;
-      console.log('✅ Successfully retrieved access token.');
-
-      // 3. Get Service Token
-      console.log('Requesting service token...');
-      const serviceCreds = {
-        client_id: env.clientId2,
-        secret_key: env.clientSecret2,
-        token: access_token,
-      };
-      const serviceData = await mophIdService.getServiceToken(serviceCreds);
-      const service_token = serviceData.data.access_token;
-      console.log('✅ Successfully received service token.');
-
-      // 4. Get Profile
-      console.log('Fetching provider profile...');
-      const apiCreds = {
-        accessToken: service_token,
-        clientId: env.clientId2,
-        secretKey: env.clientSecret2,
-      };
-      const profileData = await mophIdService.getProviderProfile(apiCreds);
-      const license_id = profileData.data.organization[0].license_id;
-      const hcode = profileData.data.organization[0].hcode;
-      console.log('✅ Successfully fetched profile data.');
-
-      // 5. Check HCODE
-      console.log('Checking Hcode...');
-      if (hcode != env.hospitalCode) {
-        console.warn(`🔴 Authorization failed due to mismatch hospital code ${hcode}`);
-        return res.status(403).json({ error: 'Unauthorized. Mismatch hospital code.' });
-      }
-      console.log('✅ Hcode matched.');
-
-      // 6. Check Device limit
-      console.log('Checking device number...');
-      const isExceed = await userService.isDeviceLimitReached({
-        license_id: license_id,
-        apiUrl: env.userdbApiUrl,
-        apiKey: env.userDbApiKey,
+      // --- Step 1: Exchange Auth Code for User Access Token ---
+      console.log(`[LinkAccount] 1. Exchanging auth code for user token...`);
+      const userTokenData = await mophService.exchangeCodeForAccessToken({
+        authCode,
+        redirectUri,
+        clientId: config.moph.authClientId,
+        clientSecret: config.moph.authClientSecret,
+        tokenUrl: config.moph.authTokenUrl
       });
-      if(isExceed) {
-        return res.status(401).json({ error: '🔴 You are reach device limit.' });
-      } else {
-        console.log('✅ Device not exceed limit');
-      }
+      const userAccessToken = userTokenData.data.access_token;
 
-      // 7. Check Authorization (Guard Clause)
-      console.log('Checking user authorization...');
-      const isAuthorized = await hosxpService.checkActiveUser({
-        license_id: license_id,
-        apiUrl: env.hosxpApiUrl,
-        apiKey: env.hosxpApiKey,
+      // --- Step 2: Get Service Token (Server-to-Server) ---
+      console.log(`[LinkAccount] 2. Requesting service token...`);
+      const serviceTokenData = await mophService.getServiceToken({
+        clientId: config.moph.serviceClientId,
+        clientSecret: config.moph.serviceClientSecret,
+        userAccessToken: userAccessToken,
+        serviceTokenUrl: config.moph.serviceTokenUrl
+      });
+      const serviceAccessToken = serviceTokenData.data.access_token;
+
+      // --- Step 3: Fetch Provider Profile ---
+      console.log(`[LinkAccount] 3. Fetching provider profile...`);
+      const profileData = await mophService.fetchProviderProfile({
+        serviceAccessToken: serviceAccessToken,
+        clientId: config.moph.serviceClientId,
+        clientSecret: config.moph.serviceClientSecret,
+        profileUrl: config.moph.profileUrl
       });
 
-      if (!isAuthorized) {
-        console.warn(`🔴 Authorization failed for license_id: ${license_id}`);
-        // Send a 401 based on the logic in your old index.js
-        return res.status(403).json({ error: 'Forbidden.' });
+      // Extract Critical Info
+      const organization = profileData.data.organization[0];
+      if (!organization) {
+        throw new Error("No organization data found in provider profile.");
       }
-      console.log('✅ User is authorized.');
 
-      // 8. Create User
-      console.log('Creating user in database...');
-      const createUserResult = await userService.createUser({
-        license_id: license_id,
-        LineUserId: LineUserId,
-        apiUrl: env.userdbApiUrl,
-        apiKey: env.userDbApiKey,
+      const { license_id: licenseId, hcode: hospitalCode } = organization;
+
+      // --- Step 4: Validate Hospital Code ---
+      console.log(`[LinkAccount] 4. Verifying Hospital Code: ${hospitalCode}...`);
+      if (String(hospitalCode) !== String(config.app.hospitalCode)) {
+        console.warn(`[LinkAccount] ⛔ Hospital Code Mismatch. Expected: ${config.app.hospitalCode}, Got: ${hospitalCode}`);
+        return res.status(403).json({ error: 'Unauthorized. Hospital code does not match this facility.' });
+      }
+
+      // --- Step 5: Check Device Limit (User DB) ---
+      console.log(`[LinkAccount] 5. Checking device limits for License: ${licenseId}...`);
+      const isLimitExceeded = await userService.isDeviceLimitExceeded({
+        licenseId,
+        apiUrl: config.internalApis.userDb.url,
+        apiKey: config.internalApis.userDb.key
       });
-      console.log('✅ User created successfully:', createUserResult);
 
-      // 9. Success Response
-      res.status(200).json(profileData); // Send back the profile on success
+      if (isLimitExceeded) {
+        console.warn(`[LinkAccount] ⛔ Device limit reached for ${licenseId}`);
+        return res.status(401).json({ error: 'Maximum device limit reached for this license.' });
+      }
+
+      // --- Step 6: Check Authorization in HOSxP ---
+      console.log(`[LinkAccount] 6. Checking Active Status in HOSxP...`);
+      const isActive = await hosxpService.checkDoctorActiveStatus({
+        licenseId,
+        apiUrl: config.internalApis.hosxp.url,
+        apiKey: config.internalApis.hosxp.key
+      });
+
+      if (!isActive) {
+        console.warn(`[LinkAccount] ⛔ User ${licenseId} is not active in HOSxP.`);
+        return res.status(403).json({ error: 'Forbidden. Your account is not active in the hospital system.' });
+      }
+
+      // --- Step 7: Persist User Link ---
+      console.log(`[LinkAccount] 7. Creating user record...`);
+      await userService.createUser({
+        licenseId,
+        lineUserId,
+        apiUrl: config.internalApis.userDb.url,
+        apiKey: config.internalApis.userDb.key
+      });
+
+      console.log(`[LinkAccount] ✅ Success! Account linked for ${licenseId}.`);
+      
+      // Return the profile data to the frontend for display
+      res.status(200).json(profileData);
 
     } catch (error) {
-      // 10. Global Error Handling
-      console.error('🔴 Failed to link account:', error.message);
-
-      // Send specific error for duplicate user
+      // Handle known "User exists" error specifically
       if (error.message.includes('User already exists')) {
-        return res.status(409).json({ error: 'User already exists.' });
+        console.warn(`[LinkAccount] ⚠️ Duplicate user attempt.`);
+        return res.status(409).json({ error: 'User is already registered.' });
       }
 
-      // Send a generic error to the client
-      res.status(500).json({ error: `An error occurred: ${error.message}` });
+      // Generic Error Handler
+      console.error(`[LinkAccount] 🔴 Error: ${error.message}`);
+      res.status(500).json({ error: 'An internal server error occurred while processing your request.' });
     }
   };
 }

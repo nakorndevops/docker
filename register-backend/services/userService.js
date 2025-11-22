@@ -1,102 +1,108 @@
 /**
- * Creates a new user in the User DB.
- * @returns {Promise<object>} The result of the creation.
+ * @file services/userService.js
+ * @description Interactions with the internal User Database API.
  */
-export async function createUser({ license_id, LineUserId, apiUrl, apiKey }) {
-  const options = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      "license_id": license_id,
-      "LineUserId": LineUserId,
-    }),
-  };
 
-  try {
-    const response = await fetch(apiUrl + "/createUser", options);
-
-    // Check for 409 Conflict (Duplicate User) specifically
-    if (response.status === 409) {
-      throw new Error('User already exists.');
-    }
-
-    if (!response.ok) {
-      throw new Error(`User DB API /createUser failed with status ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error in createUser service:', error.message);
-    throw new Error(`Failed to create user: ${error.message}`);
-  }
-}
+import { URL } from 'url';
 
 /**
- * Checks if the license has reached its device usage limit.
- * @returns {Promise<boolean>} True if limit reached/exceeded, False otherwise.
+ * Creates a new user record linking LINE ID and License ID.
+ * @param {object} params
+ * @param {string} params.licenseId - Medical License ID.
+ * @param {string} params.lineUserId - LINE User ID.
+ * @param {string} params.apiUrl - Base URL of the User DB API.
+ * @param {string} params.apiKey - Auth key for the API.
+ * @returns {Promise<object>} Response data.
+ * @throws {Error} If creation fails or user exists.
  */
-export async function isDeviceLimitReached({ license_id, apiUrl, apiKey }) {
-  // 1. Basic Input Validation
-  if (!license_id || !apiUrl || !apiKey) {
-    throw new Error("Missing required parameters: license_id, apiUrl, or apiKey");
-  }
-
-  // Use the URL constructor to safely build the URL
-  // This prevents issues if apiUrl has or doesn't have a trailing slash
-  const url = new URL("/deviceStatus", apiUrl);
+export async function createUser({ licenseId, lineUserId, apiUrl, apiKey }) {
+  const url = new URL('/createUser', apiUrl).href;
 
   try {
-    const response = await fetch(url.href, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ license_id }),
+      body: JSON.stringify({
+        license_id: licenseId,
+        LineUserId: lineUserId,
+      }),
     });
 
-    // 2. Check for HTTP errors (404, 500, 401, etc.)
+    if (response.status === 409) {
+      throw new Error('User already exists');
+    }
+
     if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
+      throw new Error(`API responded with status ${response.status}`);
     }
 
-    const data = await response.json();
-
-    // 3. Safety check to ensure the API returned the expected fields
-    if (typeof data.deviceUsed === 'undefined' || typeof data.deviceLimit === 'undefined') {
-      throw new Error("Invalid API response: missing device usage data");
-    }
-
-    return data.deviceUsed >= data.deviceLimit;
-
+    return await response.json();
   } catch (error) {
-    // 4. Log the error for debugging
-    console.error("Failed to check device status:", error.message);
-    // Rethrow so the calling function knows something went wrong, 
-    // or return a default safe value (like true) depending on your security needs.
+    console.error('[User Service] Create user failed:', error.message);
     throw error;
   }
 }
 
-export async function getUser({ LineUserId, apiUrl, apiKey }) {
-  const options = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({ LineUserId: LineUserId })
-  };  
+/**
+ * Checks if the license has exceeded the allowed device limit.
+ * @returns {Promise<boolean>} True if limit exceeded.
+ */
+export async function isDeviceLimitExceeded({ licenseId, apiUrl, apiKey }) {
+  const url = new URL('/deviceStatus', apiUrl).href;
+
   try {
-  const response = await fetch(apiUrl + "/getUser", options);
-  const data = await response.json();
-  return { status: response.status, data: data };
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ license_id: licenseId }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API responded with status ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.deviceUsed === undefined || data.deviceLimit === undefined) {
+      throw new Error('Invalid response structure from Device Status API');
+    }
+
+    return data.deviceUsed >= data.deviceLimit;
   } catch (error) {
-    // This catches network errors (e.g., server down)
-    console.error('Error in getUser service:', error.message);
-    // Throw a specific error for the controller to catch
+    console.error('[User Service] Device limit check failed:', error.message);
+    // Fail safe: assume limit is NOT reached to avoid blocking users on network error? 
+    // Or assume true for security? Implementing strict check here:
+    throw error; 
+  }
+}
+
+/**
+ * Retrieves user information by LINE ID.
+ * @returns {Promise<object>} { status: number, data: object }
+ */
+export async function getUserByLineId({ lineUserId, apiUrl, apiKey }) {
+  const url = new URL('/getUser', apiUrl).href;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ LineUserId: lineUserId })
+    });
+
+    const data = await response.json();
+    return { status: response.status, data };
+  } catch (error) {
+    console.error('[User Service] Get user failed:', error.message);
     throw new Error('Service unavailable. Could not connect to user database.');
   }
 }

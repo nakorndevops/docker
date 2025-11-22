@@ -1,42 +1,40 @@
-// services/hosxpService.js
+/**
+ * @file services/hosxpService.js
+ * @description Interactions with the internal HOSxP API.
+ */
+
+import { URL } from 'url';
 
 /**
- * Checks if a user is active in HOSxP.
- * @returns {Promise<boolean>} True if active (1), false otherwise (0 or error).
+ * Verifies if a doctor is marked as 'Active' in the HOSxP system.
+ * @param {object} params
+ * @param {string} params.licenseId - Doctor's license ID.
+ * @param {string} params.apiUrl - Base URL of HOSxP API.
+ * @param {string} params.apiKey - Auth key.
+ * @returns {Promise<boolean>} True if active, false otherwise.
  */
-export async function checkActiveUser({ license_id, apiUrl, apiKey }) {
-  const checkAuthorizedOptions = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    // The HOSxP API expects 'license_id', not '_license_id'.
-    // The LIKE logic is handled by the API server itself.
-    body: JSON.stringify({
-      license_id: license_id, 
-    }),
-  };
+export async function checkDoctorActiveStatus({ licenseId, apiUrl, apiKey }) {
+  const url = new URL('/checkActiveUser', apiUrl).href;
 
   try {
-    const response = await fetch(apiUrl + "/checkActiveUser", checkAuthorizedOptions);
-    const isActive = await response.json(); // Expects true or false
-    if(response.status == 200) {
-      return isActive.status;
-    } else {
-      return false;
-    }    
-    /*
-    if (!response.ok) {
-       throw new Error(`HOSxP API /checkActiveUser failed with status ${response.status}`);
-    }
-    */
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ license_id: licenseId }),
+    });
 
-    
-    // return !!authorizedStatus; // Convert 1/0 to true/false
-    // return authorizedStatus.status; 
+    if (response.status === 200) {
+      const data = await response.json();
+      return data.status === true;
+    }
+
+    return false;
   } catch (error) {
-    console.error('Error in checkActiveUser service:', error.message);
-    throw new Error('Failed to check user authorization.');
+    console.error('[HOSxP Service] Active check failed:', error.message);
+    // Default to false (deny access) on error for security
+    return false;
   }
 }
