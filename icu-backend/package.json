@@ -1,7 +1,7 @@
 {
   "name": "icu-backend",
   "version": "1.0.0",
-  "description": "Link Line account with ProviderId",
+  "description": "Backend for ICU Dashboard",
   "main": "index.js",
   "type": "module",
   "scripts": {
