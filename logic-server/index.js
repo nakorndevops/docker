@@ -53,9 +53,9 @@ const verifyToken = (request, response, next) => {
 
 let license_id;
 
-const manual = {
+const menu = {
   type: "flex",
-  altText: "User Manual",
+  altText: "Menu",
   contents: {
     "type": "bubble",
     "header": {
@@ -64,36 +64,64 @@ const manual = {
       "contents": [
         {
           "type": "text",
-          "text": "Manual",
-          "weight": "bold"
+          "text": "Menu",
+          "weight": "bold",
+          "size": "lg",
+          "color": "#FF0000"
         },
         {
-          "type": "text",
-          "text": "hello, world",
+          "type": "box",
+          "layout": "vertical",
           "contents": [
             {
-              "type": "span",
-              "text": "ward  ",
-              "weight": "bold"
-            },
+              "type": "text",
+              "text": "ICU Dashboard",
+              "weight": "bold",
+              "action": {
+                "type": "uri",
+                "label": "action",
+                "uri": "https://liff.line.me/2008398299-D32e7eYB"
+              },
+              "margin": "xl",
+              "color": "#0000FF"
+            }
+          ],
+          "margin": "none",
+          "spacing": "none"
+        },
+        {
+          "type": "box",
+          "layout": "vertical",
+          "contents": [
             {
-              "type": "span",
-              "text": "(แสดง ward ที่มีคนไข้อยู่)"
+              "type": "text",
+              "text": "Ward",
+              "margin": "xl",
+              "weight": "bold",
+              "action": {
+                "type": "message",
+                "label": "action",
+                "text": "Ward"
+              },
+              "color": "#0000FF"
             }
           ]
         },
         {
-          "type": "text",
-          "text": "hello, world",
+          "type": "box",
+          "layout": "vertical",
           "contents": [
             {
-              "type": "span",
-              "text": "unlink ",
-              "weight": "bold"
-            },
-            {
-              "type": "span",
-              "text": "(ยกเลิกการใช้งาน)"
+              "type": "text",
+              "text": "Unlink Account",
+              "margin": "xl",
+              "weight": "bold",
+              "action": {
+                "type": "message",
+                "label": "action",
+                "text": "Unlink"
+              },
+              "color": "#0000FF"
             }
           ]
         }
@@ -187,7 +215,7 @@ app.post("/", verifyToken, getLicenseId, async (request, response) => {
     console.log(unlinkReply);
 
     if (unlinkResponse.status == 200) {
-      replyText = unlinkReply.unlinkResult;
+      replyText = unlinkReply.message;
     } else {
       replyText = unlinkReply.error;
     }
@@ -195,7 +223,7 @@ app.post("/", verifyToken, getLicenseId, async (request, response) => {
     replyMessage = {
       type: "text",
       text: replyText,
-    };    
+    };
 
   } else if (modifiedsentMessage === "icu") {
     replyMessage = {
@@ -204,7 +232,7 @@ app.post("/", verifyToken, getLicenseId, async (request, response) => {
     };
   }
   else {
-    replyMessage = manual;
+    replyMessage = menu;
   }
 
   response.json(replyMessage);
