@@ -96,6 +96,13 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
+            transition: box-shadow 0.3s ease;
+        }
+        
+        /* Highlight card in edit mode */
+        .icu-card.is-editing {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(0, 90, 156, 0.2);
         }
 
         .icu-card h3 {
@@ -236,6 +243,14 @@
             border-radius: 6px;
             color: #333;
         }
+        
+        /* Highlight changed value in edit mode */
+        .fixed-value-display.updated {
+            background-color: #fff3cd;
+            color: #856404;
+            border-color: #ffeeba;
+            transition: background-color 0.3s;
+        }
 
         /* --- Buttons --- */
         .card-actions {
@@ -282,7 +297,7 @@
     <script>
         /**
          * @file icu.html
-         * @description Frontend logic for the ICU Status Dashboard with Dynamic Config Loading.
+         * @description Frontend logic for the ICU Status Dashboard with Real-time Polling.
          */
 
         // --- 1. Configuration & Constants ---
@@ -296,11 +311,13 @@
                 LOGIN: "https://dh.tranghos.moph.go.th/providerid-login",
                 ERROR_403: "/http_error/403.html",
                 ERROR_500: "/http_error/500.html"
-            }
+            },
+            POLLING_INTERVAL: 1000 // 1 Second
         };
 
         // Global State
         let currentIcuData = [];
+        let pollingIntervalId = null;
 
         // --- 2. UI Services ---
         const UI = {
@@ -353,7 +370,7 @@
                     <div class="input-form-wrapper">
                         <div class="input-group">
                             <label>Total Patients (Fixed)</label>
-                            <div class="fixed-value-display">${ward.patient_count}</div>
+                            <div class="fixed-value-display" id="fixed-val-${ward.ward_code}">${ward.patient_count}</div>
                         </div>
                         <div class="section-label">Breakdown by Risk</div>
                         <div class="risk-inputs-grid">
@@ -369,25 +386,60 @@
                 `;
             },
 
-            renderAll(data) {
-                this.container.innerHTML = '';
+            /**
+             * Smartly updates the DOM.
+             * If card doesn't exist, create it.
+             * If card exists and is viewing, update content.
+             * If card exists and is EDITING, ONLY update the "Total Patients" text to avoid overwriting user inputs.
+             */
+            renderOrUpdateAll(data) {
                 data.forEach(ward => {
-                    const card = document.createElement('div');
-                    card.className = 'icu-card';
-                    card.id = `card-${ward.ward_code}`;
-                    card.innerHTML = this.getViewTemplate(ward);
-                    this.container.appendChild(card);
+                    const cardId = `card-${ward.ward_code}`;
+                    let card = document.getElementById(cardId);
+                    
+                    if (!card) {
+                        // Create New
+                        card = document.createElement('div');
+                        card.className = 'icu-card';
+                        card.id = cardId;
+                        card.innerHTML = this.getViewTemplate(ward);
+                        this.container.appendChild(card);
+                    } else {
+                        // Update Existing
+                        const isEditing = card.classList.contains('is-editing');
+                        
+                        if (isEditing) {
+                            // In Edit Mode: ONLY update the fixed patient count so user knows if data changed
+                            const fixedValEl = document.getElementById(`fixed-val-${ward.ward_code}`);
+                            if (fixedValEl && parseInt(fixedValEl.innerText) !== ward.patient_count) {
+                                fixedValEl.innerText = ward.patient_count;
+                                fixedValEl.classList.add('updated'); // Visual cue that data changed
+                            }
+                        } else {
+                            // In View Mode: Full update
+                            // Note: Simple innerHTML replacement is safe here because we use event delegation on container
+                            card.innerHTML = this.getViewTemplate(ward);
+                        }
+                    }
                 });
             },
 
             updateCardToEditMode(wardId) {
                 const ward = currentIcuData.find(w => w.ward_code === wardId);
-                if (ward) document.getElementById(`card-${wardId}`).innerHTML = this.getEditTemplate(ward);
+                const card = document.getElementById(`card-${wardId}`);
+                if (ward && card) {
+                    card.classList.add('is-editing'); // Flag for polling logic
+                    card.innerHTML = this.getEditTemplate(ward);
+                }
             },
 
             updateCardToViewMode(wardId) {
                 const ward = currentIcuData.find(w => w.ward_code === wardId);
-                if (ward) document.getElementById(`card-${wardId}`).innerHTML = this.getViewTemplate(ward);
+                const card = document.getElementById(`card-${wardId}`);
+                if (ward && card) {
+                    card.classList.remove('is-editing'); // Remove flag
+                    card.innerHTML = this.getViewTemplate(ward);
+                }
             }
         };
 
@@ -417,7 +469,11 @@
                 }
             },
 
-            async fetchIcuData() {
+            /**
+             * Fetches ICU Data.
+             * @param {boolean} silent - If true, suppresses alerts/redirects (for polling).
+             */
+            async fetchIcuData(silent = false) {
                 try {
                     const response = await fetch(CONFIG.ENDPOINTS.GET_STATUS, {
                         method: 'POST',
@@ -426,14 +482,20 @@
                     });
 
                     if (response.status === 200) return await response.json();
-                    if (response.status === 403) window.location.href = CONFIG.URLS.ERROR_403;
-                    else if (response.status === 404) window.location.href = CONFIG.URLS.LOGIN;
-                    else window.location.href = CONFIG.URLS.ERROR_500;
+                    
+                    // Error Handling
+                    if (!silent) {
+                        if (response.status === 403) window.location.href = CONFIG.URLS.ERROR_403;
+                        else if (response.status === 404) window.location.href = CONFIG.URLS.LOGIN;
+                        else window.location.href = CONFIG.URLS.ERROR_500;
+                    } else {
+                        console.warn(`Polling failed with status: ${response.status}`);
+                    }
                     
                     return null;
                 } catch (error) {
                     console.error("Network Error:", error);
-                    alert("Failed to connect to server.");
+                    if (!silent) alert("Failed to connect to server.");
                     return null;
                 }
             },
@@ -456,6 +518,20 @@
                     console.error("Update Failed:", error);
                     alert("Failed to update data.");
                 }
+            },
+
+            startPolling() {
+                // Clear any existing interval to be safe
+                if (pollingIntervalId) clearInterval(pollingIntervalId);
+
+                pollingIntervalId = setInterval(async () => {
+                    // Silent fetch to avoid disrupting user on transient network errors
+                    const data = await this.fetchIcuData(true);
+                    if (data) {
+                        currentIcuData = data;
+                        UI.renderOrUpdateAll(data);
+                    }
+                }, CONFIG.POLLING_INTERVAL);
             },
 
             async init() {
@@ -481,14 +557,17 @@
                     const profile = await liff.getProfile();
                     this.lineUserId = profile.userId;
 
-                    // 3. Load Dashboard Data
+                    // 3. Initial Data Load
                     UI.updateLoadingText("Loading ICU Data...");
                     const data = await this.fetchIcuData();
                     if (data) {
                         currentIcuData = data;
-                        UI.renderAll(data);
+                        UI.renderOrUpdateAll(data);
                     }
                     UI.hideLoader();
+
+                    // 4. Start Real-time Polling
+                    this.startPolling();
 
                 } catch (error) {
                     alert(`Critical Error: ${error.message}`);
@@ -496,26 +575,37 @@
             },
 
             attachEventListeners() {
+                // Event Delegation for dynamic buttons
                 UI.container.addEventListener('click', async (e) => {
                     const btn = e.target.closest('button');
                     if (!btn) return;
                     const wardId = btn.dataset.wardId;
                     
-                    if (btn.classList.contains('js-btn-edit')) UI.updateCardToEditMode(wardId);
-                    else if (btn.classList.contains('js-btn-cancel')) UI.updateCardToViewMode(wardId);
-                    else if (btn.classList.contains('js-btn-save')) await this.handleSave(wardId);
+                    if (btn.classList.contains('js-btn-edit')) {
+                        // Pausing polling is optional, but logic handles editing state nicely now
+                        UI.updateCardToEditMode(wardId);
+                    }
+                    else if (btn.classList.contains('js-btn-cancel')) {
+                        UI.updateCardToViewMode(wardId);
+                    }
+                    else if (btn.classList.contains('js-btn-save')) {
+                        await this.handleSave(wardId);
+                    }
                 });
             },
 
             async handleSave(wardId) {
+                // Find latest data from global state (which is kept fresh by polling)
                 const ward = currentIcuData.find(w => w.ward_code === wardId);
+                
                 const newHigh = parseInt(document.getElementById(`input-high-${wardId}`).value) || 0;
                 const newMed = parseInt(document.getElementById(`input-medium-${wardId}`).value) || 0;
                 const newLow = parseInt(document.getElementById(`input-low-${wardId}`).value) || 0;
                 const totalRisk = newHigh + newMed + newLow;
 
+                // Validate against the LATEST patient count
                 if (totalRisk !== ward.patient_count) {
-                    alert(`Error: Risk breakdown (${totalRisk}) must equal total patients (${ward.patient_count}).`);
+                    alert(`Error: Risk breakdown (${totalRisk}) must equal the current total patients (${ward.patient_count}).\n\n(Data may have updated while you were editing)`);
                     return;
                 }
 
@@ -525,9 +615,17 @@
 
                 UI.showLoader();
                 UI.updateLoadingText("Saving...");
+                
+                // Stop polling briefly while saving to prevent race conditions
+                clearInterval(pollingIntervalId);
+
                 await this.updateWardRisk(ward);
+                
                 UI.updateCardToViewMode(wardId);
                 UI.hideLoader();
+
+                // Restart polling
+                this.startPolling();
             }
         };
 
