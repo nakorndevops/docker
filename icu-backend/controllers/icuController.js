@@ -1,188 +1,91 @@
 /**
  * @file controllers/icuController.js
- * @description Business logic for the ICU Dashboard.
+ * @description Orchestrates the retrieval and processing of ICU Ward data.
  */
 
 import * as externalService from "../services/externalService.js";
+import * as icuLogic from "../utils/icuLogic.js";
 
-// 1. Wrap logic in an async function
-async function updateRiskLevels(data, config) {
-
-  // 2. Use for...of loop (Not forEach) to handle await correctly
-  for (const ward of data) {
+/**
+ * Background Task: Syncs the normalized/corrected data back to the ICU Database.
+ * This runs asynchronously to not block the UI response.
+ */
+async function syncRiskLevelsToDatabase(wardList, config) {
+  for (const ward of wardList) {
     try {
-      // Destructure only the fields you need for the payload
-      const { ward_code, high_risk, medium_risk, low_risk } = ward;
-
-      console.log(`Updating Ward ${ward_code}...`);
-
-      // 3. Call the external service
-      const response = await externalService.updateIcuRiskLevel(
-        { ward_code, high_risk, medium_risk, low_risk },
-        config
-      );
-
-      console.log(`Success Ward ${ward_code}:`, response);
-
+      await externalService.updateIcuRiskLevel(ward, config);
     } catch (error) {
-      console.error(`Failed to update Ward ${ward.ward_code}:`, error);
+      console.error(`[Sync] Failed to update Ward ${ward.ward_code}:`, error.message);
     }
   }
-
-  console.log('All updates completed.');
+  // console.log('[Sync] Database synchronization completed.');
 }
 
 /**
- * Aggregates data from HOSxP (Bed Counts/Patients) and ICU DB (Risk Levels).
- * POST /icuStatus
+ * Controller: Aggregates dashboard data.
+ * Endpoint: POST /icuStatus
  */
 export const getIcuStatusHandler = (config) => async (req, res) => {
   try {
-    // Parallel execution for performance
-    const [hosxpResponse, icuResponse] = await Promise.all([
-      externalService.getHosxpIcuBedStatus(config),
-      externalService.getIcuRiskLevels(config)
+    // 1. Fetch data from external sources in parallel
+    const [hosxpResult, icuRiskResult] = await Promise.all([
+      externalService.fetchHosxpBedStatus(config),
+      externalService.fetchIcuRiskLevels(config)
     ]);
 
-    // Validate responses
-    if (!hosxpResponse.ok) {
-      return res.status(hosxpResponse.status).json(hosxpResponse.data);
+    // 2. Fail fast if upstream services are down
+    if (!hosxpResult.ok) {
+      console.warn(`[ICU Controller] HOSxP Error: ${hosxpResult.status}`);
+      return res.status(hosxpResult.status).json(hosxpResult.data);
     }
-    if (!icuResponse.ok) {
-      return res.status(icuResponse.status).json(icuResponse.data);
+    if (!icuRiskResult.ok) {
+      console.warn(`[ICU Controller] ICU DB Error: ${icuRiskResult.status}`);
+      return res.status(icuRiskResult.status).json(icuRiskResult.data);
     }
 
-    const wardsData = hosxpResponse.data; // From HOSxP
-    const riskData = icuResponse.data;    // From ICU DB
+    const rawHosxpData = hosxpResult.data;
+    const rawRiskData = icuRiskResult.data;
 
-    // --- Data Merging Logic ---
+    // 3. Process Data using Business Logic (Pure Functions)
+    const mergedData = icuLogic.mergeWardData(rawHosxpData, rawRiskData);
+    const capacityCorrectedData = icuLogic.applyBedCapacityOverrides(mergedData);
+    const finalBalancedData = icuLogic.normalizeRiskCounts(capacityCorrectedData);
 
-    // 1. Create a lookup object (Hash Map) for risk data for O(1) access
-    const riskLookup = riskData.reduce((acc, item) => {
-      acc[item.ward_code] = item;
-      return acc;
-    }, {});
+    // 4. Trigger Background Sync (Fire and Forget)
+    // We update the DB with the mathematically balanced numbers so the next fetch is accurate
+    syncRiskLevelsToDatabase(finalBalancedData, config);
 
-    // 2. Merge HOSxP data with Risk data
-    const combinedData = wardsData.map(ward => {
-      const riskInfo = riskLookup[ward.ward_code] || {};
-
-      return {
-        ...ward,       // spread ward info (code, name, total_beds, patient_count)
-        ...riskInfo    // spread risk info (high, medium, low)
-      };
-    });
-
-    // Correct bed
-    const realBed = {
-      "10": 8, // ICU Med
-      "17": 36, // RCU
-      "22": 8, // ICU Surg
-      "24": 5, // ICU CVT
-      "41": 10 // CCU
-    };
-
-    const correctedData = combinedData.map(ward => {
-      // 1. Look up the correct total_beds using the ward_code
-      const correctTotal = realBed[ward.ward_code];
-
-      // 2. If a correction exists in realBed, update the object
-      if (correctTotal !== undefined) {
-        return {
-          ...ward, // Copy existing properties (name, risk counts, etc.)
-          total_beds: correctTotal,
-          available_beds: correctTotal - ward.patient_count // Recalculate available
-        };
-      }
-
-      // 3. If no correction found, return the original object
-      return ward;
-    });
-
-    const balancedData = correctedData.map(ward => {
-      // Create a copy of the risk values to modify
-      let { high_risk, medium_risk, low_risk, patient_count } = ward;
-
-      // Calculate the current sum of risks
-      const currentSum = high_risk + medium_risk + low_risk;
-
-      // Case 1: Sum is LESS than patient count (Underflow)
-      if (currentSum < patient_count) {
-        const missing = patient_count - currentSum;
-        // Rule: Add difference to high_risk
-        high_risk += missing;
-      }
-
-      // Case 2: Sum is GREATER than patient count (Overflow)
-      else if (currentSum > patient_count) {
-        let surplus = currentSum - patient_count;
-
-        // Rule: Decrease Low -> then Medium -> then High
-
-        // 1. Try to remove from Low
-        if (surplus > 0) {
-          const deductLow = Math.min(low_risk, surplus); // Don't take more than exists
-          low_risk -= deductLow;
-          surplus -= deductLow;
-        }
-
-        // 2. Try to remove from Medium (if surplus remains)
-        if (surplus > 0) {
-          const deductMed = Math.min(medium_risk, surplus);
-          medium_risk -= deductMed;
-          surplus -= deductMed;
-        }
-
-        // 3. Try to remove from High (if surplus remains)
-        if (surplus > 0) {
-          const deductHigh = Math.min(high_risk, surplus);
-          high_risk -= deductHigh;
-          surplus -= deductHigh;
-        }
-      }
-
-      // Return the updated object
-      return {
-        ...ward,
-        high_risk,
-        medium_risk,
-        low_risk
-      };
-    });
-
-    // Run the function
-    updateRiskLevels(balancedData, config);
-
-    res.status(200).json(balancedData);
+    // 5. Send Response
+    res.status(200).json(finalBalancedData);
 
   } catch (error) {
-    console.error(`[ICU Controller] Get Status Error: ${error.message}`);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error(`[ICU Controller] Critical Error: ${error.message}`);
+    res.status(500).json({ error: "Internal Server Error processing ICU data." });
   }
 };
 
 /**
- * Updates the risk levels for a specific ward in the ICU DB.
- * POST /icuBedRiskUpdate
+ * Controller: Handles manual updates from the frontend.
+ * Endpoint: POST /icuBedRiskUpdate
  */
 export const updateRiskLevelHandler = (config) => async (req, res) => {
   try {
     const { ward_code, high_risk, medium_risk, low_risk } = req.body;
 
-    // Basic Validation
     if (!ward_code) {
-      return res.status(400).json({ error: "Missing ward_code" });
+      return res.status(400).json({ error: "Missing required field: ward_code" });
     }
 
-    const response = await externalService.updateIcuRiskLevel(
+    // Call service
+    const updateResult = await externalService.updateIcuRiskLevel(
       { ward_code, high_risk, medium_risk, low_risk },
       config
     );
 
-    res.status(response.status).json(response.data);
+    res.status(updateResult.status).json(updateResult.data);
 
   } catch (error) {
     console.error(`[ICU Controller] Update Error: ${error.message}`);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Internal Server Error updating risk level." });
   }
 };

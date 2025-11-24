@@ -1,15 +1,20 @@
 /**
  * @file services/externalService.js
- * @description Handles communication with external internal microservices 
+ * @description Gateway for communicating with internal microservices 
  * (User DB, HOSxP API, ICU DB API).
  */
 
 import { URL } from 'url';
 
 /**
- * generic helper for fetching data with error handling
+ * Generic HTTP client wrapper.
+ * @param {string} url - Full endpoint URL.
+ * @param {string} apiKey - Authorization Bearer token.
+ * @param {object|null} body - JSON payload (optional).
+ * @param {string} method - HTTP Method (default: POST).
+ * @returns {Promise<{ok: boolean, status: number, data: any}>}
  */
-async function fetchApi(url, apiKey, body = null, method = 'POST') {
+async function sendRequest(url, apiKey, body = null, method = 'POST') {
   try {
     const options = {
       method,
@@ -22,52 +27,59 @@ async function fetchApi(url, apiKey, body = null, method = 'POST') {
 
     const response = await fetch(url, options);
     
-    // Parse JSON regardless of status to get error messages if available
-    const data = await response.json().catch(() => ({})); 
+    // Attempt to parse JSON even on error status to capture backend error messages
+    const responseData = await response.json().catch(() => ({})); 
 
     return {
       ok: response.ok,
       status: response.status,
-      data: data
+      data: responseData
     };
   } catch (error) {
-    console.error(`[ExternalService] Fetch failed for ${url}:`, error.message);
-    throw new Error(`Service Unavailable: ${error.message}`);
+    console.error(`[ExternalService] Network Error calling ${url}:`, error.message);
+    // Return a structured error to prevent app crash
+    return {
+      ok: false,
+      status: 503,
+      data: { error: "Upstream service unavailable", details: error.message }
+    };
   }
 }
 
-// --- User DB Services ---
+// --- User Database Service ---
 
-export async function getUserByLineId(lineUserId, config) {
-  const url = new URL('/getUser', config.services.userDb.url).href;
-  return await fetchApi(url, config.services.userDb.key, { LineUserId: lineUserId });
+export async function verifyUserByLineId(lineUserId, config) {
+  const endpoint = new URL('/getUser', config.services.userDb.url).href;
+  return await sendRequest(endpoint, config.services.userDb.key, { LineUserId: lineUserId });
 }
 
-// --- HOSxP Services ---
+// --- HOSxP Service ---
 
-export async function checkHosxpActiveUser(licenseId, config) {
-  const url = new URL('/checkActiveUser', config.services.hosxp.url).href;
-  return await fetchApi(url, config.services.hosxp.key, { license_id: licenseId });
+export async function checkHosxpActiveStatus(licenseId, config) {
+  const endpoint = new URL('/checkActiveUser', config.services.hosxp.url).href;
+  return await sendRequest(endpoint, config.services.hosxp.key, { license_id: licenseId });
 }
 
-export async function getHosxpIcuBedStatus(config) {
-  const url = new URL('/icuBedStatus', config.services.hosxp.url).href;
-  // No body needed for this specific endpoint based on previous code
-  return await fetchApi(url, config.services.hosxp.key, {}); 
+export async function fetchHosxpBedStatus(config) {
+  const endpoint = new URL('/icuBedStatus', config.services.hosxp.url).href;
+  // POST with empty body as per API requirement
+  return await sendRequest(endpoint, config.services.hosxp.key, {}); 
 }
 
-// --- ICU DB Services ---
+// --- ICU Database Service ---
 
-export async function getIcuRiskLevels(config) {
-  const url = new URL('/icuBedRisk', config.services.icuDb.url).href;
-  return await fetchApi(url, config.services.icuDb.key, {});
+export async function fetchIcuRiskLevels(config) {
+  const endpoint = new URL('/icuBedRisk', config.services.icuDb.url).href;
+  return await sendRequest(endpoint, config.services.icuDb.key, {});
 }
 
-export async function updateIcuRiskLevel(payload, config) {
-  const url = new URL('/icuBedRiskUpdate', config.services.icuDb.url).href;
-  const { ward_code, high_risk, medium_risk, low_risk } = payload;
+export async function updateIcuRiskLevel(wardData, config) {
+  const endpoint = new URL('/icuBedRiskUpdate', config.services.icuDb.url).href;
   
-  return await fetchApi(url, config.services.icuDb.key, {
+  // Explicitly destructure to ensure only expected data is sent
+  const { ward_code, high_risk, medium_risk, low_risk } = wardData;
+
+  return await sendRequest(endpoint, config.services.icuDb.key, {
     ward_code,
     high_risk,
     medium_risk,
