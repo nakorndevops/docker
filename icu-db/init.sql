@@ -12,4 +12,4 @@ CREATE TABLE IF NOT EXISTS ward_occupancy (
     PRIMARY KEY (ward_code)
 );
 
-INSERT IGNORE INTO ward_occupancy (ward_code) VALUES ('10'), ('22'), ('24'), ('41');
+INSERT IGNORE INTO ward_occupancy (ward_code) VALUES ('10'), ('22'), ('24'), ('41'), ('19');

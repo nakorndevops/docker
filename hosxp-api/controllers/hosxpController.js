@@ -94,7 +94,7 @@ export const checkActiveUser = async (req, res) => {
  */
 export const getIcuBedStatus = async (req, res) => {
   try {
-    // Specific Ward IDs hardcoded based on business logic (10, 22, 24, 41)
+    // Specific Ward IDs hardcoded based on business logic (10, 22, 24, 41, 19)
     const query = `
       SELECT
         w.ward AS ward_code,
@@ -106,12 +106,12 @@ export const getIcuBedStatus = async (req, res) => {
         ipt AS i
         INNER JOIN ward AS w ON i.ward = w.ward
       WHERE
-        i.ward IN (10, 22, 24, 41)
+        i.ward IN (10, 17, 22, 24, 41)
         AND i.dchdate IS NULL
       GROUP BY
         w.NAME
       ORDER BY
-        w.ward;
+        w.shortname;
     `;
 
     const [rows] = await pool.query(query);
