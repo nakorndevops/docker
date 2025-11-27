@@ -16,5 +16,7 @@ router.use(verifyToken);
 router.post("/ward", hosxpController.getWardList);
 router.post("/checkActiveUser", hosxpController.checkActiveUser);
 router.post("/icuBedStatus", hosxpController.getIcuBedStatus);
+router.post("/vipBedStatus", hosxpController.getVipBedStatus);
+router.post("/patientOperationData", hosxpController.getPatientOperationData);
 
 export default router;

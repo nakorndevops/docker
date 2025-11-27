@@ -8,10 +8,12 @@
 // Mapping: { WardCode: TotalBeds }
 const MANUAL_BED_OVERRIDES = {
   "10": 8,  // ICU Med
-  "17": 36, // RCU
+  "17": 28, // RCU
   "22": 8,  // ICU Surg
-  "24": 5,  // ICU CVT
-  "41": 10  // CCU
+  "24": 4,  // ICU CVT
+  "41": 8,  // CCU
+  "55": 6, // PICU
+  "53": 8, // NICU
 };
 
 /**
