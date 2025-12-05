@@ -1,0 +1,13 @@
+{
+  "name": "authen-server",
+  "version": "1.0.0",
+  "description": "Authentication server with multiple methods",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}

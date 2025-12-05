@@ -1,0 +1,13 @@
+{
+  "name": "or-monitor-backend",
+  "version": "1.0.0",
+  "description": "Backend for Patient Operating Status Monitor",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}

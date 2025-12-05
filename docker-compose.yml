@@ -17,6 +17,7 @@ services:
     depends_on:
       - user-db-api 
       - icu-db-api   
+      - or-db-api   
     networks:
       - app-network
     restart: unless-stopped
@@ -139,7 +140,69 @@ services:
       proxy-server:
         condition: service_started
     networks:
-      - app-network           
+      - app-network  
+
+  # Node.js backend Service
+  or-monitor-backend:
+    build:
+      context: ./or-monitor-backend
+      dockerfile: Dockerfile
+    container_name: or-monitor-backend
+    # ports removed for security
+    user: "node"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
+    volumes:
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro
+      - ./certs/or-monitor-backend.crt:/usr/src/app/cert/or-monitor-backend.crt:ro
+      - ./certs/or-monitor-backend.key:/usr/src/app/cert/or-monitor-backend.key:ro
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Bangkok
+      - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem
+    depends_on:
+      proxy-server:
+        condition: service_started
+    networks:
+      - app-network    
+
+
+  # Node.js backend Service
+  authen-server:
+    build:
+      context: ./authen-server
+      dockerfile: Dockerfile
+    container_name: authen-server
+    # ports removed for security
+    user: "node"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
+    volumes:
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro
+      - ./certs/authen-server.crt:/usr/src/app/cert/authen-server.crt:ro
+      - ./certs/authen-server.key:/usr/src/app/cert/authen-server.key:ro
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Bangkok
+      - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem
+    depends_on:
+      proxy-server:
+        condition: service_started
+    networks:
+      - app-network       
+
 
   # HOSxP API Server Service
   hosxp-api:
@@ -295,6 +358,37 @@ services:
     networks:
       - app-network
 
+  # OR DB API Server Service
+  or-db-api:
+    build:
+      context: ./or-db-api
+      dockerfile: Dockerfile
+    container_name: or-db-api
+    # ports removed for security
+    user: "node"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
+    volumes:
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro
+      - ./certs/or-db-api.crt:/usr/src/app/cert/or-db-api.crt:ro
+      - ./certs/or-db-api.key:/usr/src/app/cert/or-db-api.key:ro
+      - ./keys/public-key/or-db-api-public-key.pem:/usr/src/app/public-key/or-db-api-public-key.pem:ro
+    depends_on:
+      or-db:
+        condition: service_healthy      
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Bangkok
+      - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem
+    networks:
+      - app-network
+
   # File Server Service
   file-server:
     build:
@@ -379,6 +473,33 @@ services:
     networks:
       - app-network
 
+  # OR DB MySQL Server
+  or-db:
+    image: mysql:9
+    container_name: or-db
+    restart: always
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 --password="$$(cat /run/secrets/or-mysql-root-password)" --silent']
+      interval: 3s
+      retries: 5
+      start_period: 30s
+    secrets:
+      - or-mysql-root-password
+      - or-mysql-user-password
+    environment:
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/or-mysql-root-password
+      - MYSQL_DATABASE=or_db
+      - MYSQL_USER=nakorn
+      - MYSQL_PASSWORD_FILE=/run/secrets/or-mysql-user-password
+      - TZ=Asia/Bangkok
+    # Ports removed for security (access only via app-network)
+    volumes:
+      - ./or-db/my.cnf:/etc/mysql/my.cnf
+      - ./or-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - or-data:/var/lib/mysql
+    networks:
+      - app-network
+
 # Network
 networks:
   app-network:
@@ -391,6 +512,8 @@ volumes:
     name: user-data
   icu-data:
     name: icu-data
+  or-data:
+    name: or-data
   nginx_logs:
     name: nginx_logs
 
@@ -404,3 +527,7 @@ secrets:
     file: ./icu-db/MySQL_root.password
   icu-mysql-user-password:
     file: ./icu-db/MySQL_user.password
+  or-mysql-root-password:
+    file: ./or-db/MySQL_root.password
+  or-mysql-user-password:
+    file: ./or-db/MySQL_user.password  
