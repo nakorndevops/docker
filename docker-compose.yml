@@ -80,6 +80,36 @@ services:
       proxy-server:
         condition: service_started
     networks:
+      - app-network  
+
+  # Node.js OR monitor frontend
+  or-monitor-frontend:
+    build:
+      context: ./or-monitor-frontend
+      dockerfile: Dockerfile
+    container_name: or-monitor-frontend
+    # ports removed for security
+    user: "node"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
+    volumes:
+      - ./certs/combine_cert.pem:/usr/src/app/cert/combine_cert.pem:ro
+      - ./certs/or-monitor-frontend.crt:/usr/src/app/cert/or-monitor-frontend.crt:ro
+      - ./certs/or-monitor-frontend.key:/usr/src/app/cert/or-monitor-frontend.key:ro      
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Bangkok
+      - NODE_EXTRA_CA_CERTS=/usr/src/app/cert/combine_cert.pem      
+    depends_on:
+      proxy-server:
+        condition: service_started
+    networks:
       - app-network      
 
   # Node.js backend Service

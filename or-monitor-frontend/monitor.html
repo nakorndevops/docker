@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Operation Monitor</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+    <style>
+        :root {
+            /* Color Palette */
+            --bg-color: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: #aaaaaa;
+
+            /* Status Colors */
+            --status-waiting: #f39c12;
+            --status-operating: #e74c3c;
+            --status-finished: #27ae60;
+            --status-ward: #8e44ad;
+            --status-home: #3498db;
+            --status-cancelled: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Sarabun', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Header --- */
+        header {
+            height: 12vh;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+            background-color: #000;
+            border-bottom: 3px solid #444;
+        }
+
+        h1 {
+            font-size: 3.2rem;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .clock {
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+
+        /* --- Main Content (Grid) --- */
+        #monitor-container {
+            flex-grow: 1;
+            padding: 25px 40px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-auto-rows: min-content;
+            gap: 25px;
+            align-content: start;
+        }
+
+        /* --- Patient Card --- */
+        .patient-card {
+            background-color: var(--card-bg);
+            border-radius: 14px;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 5px 8px rgba(0, 0, 0, 0.4);
+            border-left: 12px solid transparent;
+            height: 125px;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .patient-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .patient-name {
+            font-size: 2.3rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .patient-hn {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        .status-badge {
+            font-size: 1.8rem;
+            padding: 10px 15px;
+            border-radius: 60px;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            min-width: 280px;
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3);
+            white-space: nowrap;
+        }
+
+        /* --- Status Specific Styling --- */
+        .st-waiting { border-left-color: var(--status-waiting); }
+        .st-waiting .status-badge { background-color: var(--status-waiting); color: #000; }
+
+        .st-operating { border-left-color: var(--status-operating); }
+        .st-operating .status-badge { background-color: var(--status-operating); animation: pulse 1.5s infinite; }
+
+        .st-finished { border-left-color: var(--status-finished); }
+        .st-finished .status-badge { background-color: var(--status-finished); }
+
+        .st-ward { border-left-color: var(--status-ward); }
+        .st-ward .status-badge { background-color: var(--status-ward); }
+
+        .st-home { border-left-color: var(--status-home); }
+        .st-home .status-badge { background-color: var(--status-home); }
+
+        .st-cancelled { border-left-color: var(--status-cancelled); }
+        .st-cancelled .status-badge { 
+            background-color: var(--status-cancelled); 
+            color: #c0392b; 
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.4); 
+        }
+        .st-cancelled .patient-name { color: var(--text-primary); }
+
+        /* --- Footer --- */
+        footer {
+            height: 7vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #111;
+            font-size: 1.5rem;
+            color: #666;
+            border-top: 1px solid #333;
+        }
+
+        /* --- Animations --- */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <header>
+        <h1>สถานะผู้ป่วยผ่าตัด</h1>
+        <div class="clock" id="clock">00:00:00</div>
+    </header>
+
+    <div id="monitor-container">
+    </div>
+
+    <footer>
+        <span id="page-indicator">Loading...</span>
+    </footer>
+
+    <script>
+        // --- Configuration ---
+        const PAGE_DURATION = 8000;
+        const ITEMS_PER_PAGE = 6;
+
+        // --- Global State Variables (Important for reloading) ---
+        let rawData = [];
+        let currentPage = 0;
+        let totalPages = 1;
+        let userProfile = null; // Store user profile globally
+
+        // --- API Functions ---
+        async function getLiffId() {
+            try {
+                const backendUrl = "https://dh.tranghos.moph.go.th/or-monitor-backend";
+                const responseliffId = await fetch(`${backendUrl}/getLiffIdMonitor`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" }
+                });
+                const liffId = await responseliffId.json();
+                return liffId.liffId;
+            } catch (err) {
+                console.error("Error fetching LIFF ID:", err);
+            }
+        }
+
+        async function getPatientList(lineUserId) {
+            try {
+                const backendUrl = "https://dh.tranghos.moph.go.th/or-monitor-backend";
+                const responseList = await fetch(`${backendUrl}/getOrPatientStatusMonitor`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ LineUserId: lineUserId }),
+                });
+                return await responseList.json();
+            } catch (err) {
+                console.error("Error fetching patient list:", err);
+                return []; // Return empty array on failure
+            }
+        }
+
+        async function initializeLiff(liffId) {
+            try {
+                await liff.init({ liffId });
+                return true;
+            } catch (err) {
+                console.error("LIFF Init Error:", err);
+                return false;
+            }
+        }
+
+        // --- Core Logic ---
+
+        // Function to fetch data and update global state
+        async function fetchDataAndReload() {
+            if (!userProfile) return;
+
+            console.log("Refreshing data from server...");
+            const newData = await getPatientList(userProfile.userId);
+            
+            if (Array.isArray(newData)) {
+                rawData = newData;
+                totalPages = Math.ceil(rawData.length / ITEMS_PER_PAGE) || 1;
+                console.log(`Data updated. Total items: ${rawData.length}, Total pages: ${totalPages}`);
+            }
+        }
+
+        function getStatusClass(status) {
+            switch (status) {
+                case 'รอผ่าตัด': return 'st-waiting';
+                case 'กำลังผ่าตัด': return 'st-operating';
+                case 'ผ่าตัดเสร็จ': return 'st-finished';
+                case 'กลับหอผู้ป่วย': return 'st-ward';
+                case 'กลับบ้าน': return 'st-home';
+                case 'ยกเลิกการผ่าตัด': return 'st-cancelled';
+                default: return 'st-home';
+            }
+        }
+
+        function maskName(fname, lname) {
+            let f = fname ? fname : "";
+            let l = lname ? lname : "";
+            const maskedF = f.length > 2 ? f.substring(0, 2) + "**" : f + "*";
+            const maskedL = l.length > 1 ? l.substring(0, 1) + "**" : l + "*";
+            return `${maskedF} ${maskedL}`;
+        }
+
+        function maskHN(hn) {
+            if (!hn || hn.length < 3) return hn;
+            return hn.substring(0, hn.length - 3) + "XXX";
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('th-TH');
+        }
+
+        function renderPage(pageIndex) {
+            const container = document.getElementById('monitor-container');
+            const indicator = document.getElementById('page-indicator');
+
+            container.innerHTML = '';
+
+            // Handle empty data
+            if (rawData.length === 0) {
+                indicator.innerText = "ไม่พบข้อมูล";
+                return;
+            }
+
+            // Ensure pageIndex is valid
+            if (pageIndex >= totalPages) pageIndex = 0;
+
+            const start = pageIndex * ITEMS_PER_PAGE;
+            const end = start + ITEMS_PER_PAGE;
+            const pageData = rawData.slice(start, end);
+
+            pageData.forEach(patient => {
+                const card = document.createElement('div');
+                const statusClass = getStatusClass(patient.patient_status);
+                card.className = `patient-card ${statusClass}`;
+
+                const maskedFullName = maskName(patient.patient_fname, patient.patient_lname);
+                const maskedHNNum = maskHN(patient.hn);
+
+                card.innerHTML = `
+                <div class="patient-info">
+                    <div class="patient-name">${maskedFullName}</div>
+                    <div class="patient-hn">HN: ${maskedHNNum}</div>
+                </div>
+                <div class="status-badge">
+                    ${patient.patient_status}
+                </div>
+            `;
+                container.appendChild(card);
+            });
+
+            indicator.innerText = `หน้า ${pageIndex + 1} จาก ${totalPages}`;
+        }
+
+        async function cyclePages() {
+            // Render Current Page
+            renderPage(currentPage);
+            
+            // Increment for next loop
+            currentPage++;
+
+            // Check if we reached the end
+            if (currentPage >= totalPages) {
+                currentPage = 0; // Reset to first page
+                // FETCH NEW DATA HERE
+                await fetchDataAndReload();
+            }
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', async function () {
+            const liffId = await getLiffId();
+            if(!liffId) { alert("Cannot get LIFF ID"); return; }
+
+            const isLiffReady = await initializeLiff(liffId);
+            
+            if (!liff.isLoggedIn()) {
+                liff.login({ redirectUri: window.location.href });
+                return;
+            }
+
+            // Store Profile
+            userProfile = await liff.getProfile();
+            console.log("User ID:", userProfile.userId);
+
+            // Initial Data Load
+            await fetchDataAndReload();
+
+            // Start Clock
+            setInterval(updateClock, 1000);
+            updateClock();
+
+            // Start Page Cycle
+            cyclePages(); // Run immediately
+            setInterval(cyclePages, PAGE_DURATION); // Loop
+        });
+
+    </script>
+
+</body>
+</html>

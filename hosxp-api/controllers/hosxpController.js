@@ -138,7 +138,7 @@ export const getVipBedStatus = async (req, res) => {
         (
           SELECT
             CASE
-              WHEN b.bedno BETWEEN 2301 AND 2303 THEN 'พิเศษ ศัลยกรรมชาย'
+              WHEN b.bedno BETWEEN 2301 AND 2305 THEN 'พิเศษ ศัลยกรรมชาย'
               WHEN b.bedno BETWEEN 4201 AND 4207 THEN 'พิเศษ ศัลยกรรมกระดูก'
               WHEN b.bedno BETWEEN 4301 AND 4307 THEN 'พิเศษ ศัลยกรรมหญิง'
               WHEN b.bedno BETWEEN 4401 AND 4407 THEN 'พิเศษ นรีเวช'
@@ -153,7 +153,7 @@ export const getVipBedStatus = async (req, res) => {
             END AS ward,
             COUNT(DISTINCT b.bedno) AS occupied_beds,
             CASE
-              WHEN b.bedno BETWEEN 2301 AND 2303 THEN 3
+              WHEN b.bedno BETWEEN 2301 AND 2305 THEN 5
               WHEN b.bedno BETWEEN 4201 AND 4207 THEN 7
               WHEN b.bedno BETWEEN 4301 AND 4307 THEN 7
               WHEN b.bedno BETWEEN 4401 AND 4407 THEN 7
@@ -172,7 +172,7 @@ export const getVipBedStatus = async (req, res) => {
           WHERE
             i.dchdate IS NULL
             AND (
-              b.bedno BETWEEN 2301 AND 2303
+              b.bedno BETWEEN 2301 AND 2305
               OR b.bedno BETWEEN 4201 AND 4207
               OR b.bedno BETWEEN 4301 AND 4307
               OR b.bedno BETWEEN 4401 AND 4407
