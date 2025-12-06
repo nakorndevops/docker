@@ -180,6 +180,31 @@
             }
         }
 
+        async function verifyUser(lineUserId) {
+            const registerUrl = "https://dh.tranghos.moph.go.th/providerid-login"
+            try {
+                const backendUrl = "https://dh.tranghos.moph.go.th/or-monitor-backend";
+                const response = await fetch(`${backendUrl}/verifyLineId`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ LineUserId: lineUserId }),
+                });
+
+                if(response.status === 200) return true;
+                
+                // Error handling redirects
+                const errorPage = 'https://dh.tranghos.moph.go.th/error';
+                if(response.status === 400) window.location.href = `${errorPage}/400.html`;
+                else if(response.status === 403) window.location.href = `${errorPage}/403.html`;
+                else if(response.status === 404) window.location.href = registerUrl;
+                else if(response.status === 500) window.location.href = `${errorPage}/500.html`;
+                
+            } catch (err) {
+                console.error("Error verify user:", err);
+                window.location.href = 'https://dh.tranghos.moph.go.th/error/500.html';
+            }
+        }        
+
         async function getPatientList(lineUserId) {
             try {
                 const backendUrl = "https://dh.tranghos.moph.go.th/or-monitor-backend";
@@ -325,6 +350,8 @@
             }
 
             userProfile = await liff.getProfile();
+
+            await verifyUser(userProfile.userId)
             
             await fetchDataAndReload();
 
