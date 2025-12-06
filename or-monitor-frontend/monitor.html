@@ -156,7 +156,7 @@
     <script>
         // --- Configuration ---
         const PAGE_DURATION = 8000;
-        const ITEMS_PER_PAGE = 6;
+        const ITEMS_PER_PAGE = 8;
 
         // --- Global State ---
         let rawData = [];
@@ -246,8 +246,8 @@
         function maskName(fname, lname) {
             let f = fname ? fname : "";
             let l = lname ? lname : "";
-            const maskedF = f.length > 2 ? f.substring(0, 2) + "**" : f + "*";
-            const maskedL = l.length > 1 ? l.substring(0, 1) + "**" : l + "*";
+            const maskedF = f.length > 3 ? f.substring(0, 3) + "**" : f + "*";
+            const maskedL = l.length > 3 ? l.substring(0, 3) + "**" : l + "*";
             return `${maskedF} ${maskedL}`;
         }
 

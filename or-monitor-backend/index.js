@@ -66,6 +66,10 @@ app.post("/getLiffIdCheckpoint", async (req, res) => {
     res.json({ liffId: liffIdCheckpoint });
 });
 
+app.post("/verifyLineId", verifyUser, async (req, res) => {
+    res.status(200).json({ status: true });
+});
+
 app.post("/getOrPatientStatusMonitor", verifyUser, async (req, res) => {
 
     const headers = {
@@ -80,7 +84,7 @@ app.post("/getOrPatientStatusMonitor", verifyUser, async (req, res) => {
 
     const data = await response.json();
 
-    res.json(data);
+    res.status(response.status).json(data);
 });
 
 
@@ -115,7 +119,7 @@ app.post("/updateOrPatientStatusMonitor", verifyUser, async (req, res) => {
 
     const data = await response.json();
 
-    res.json(data);
+    res.status(response.status).json(data);
 });
 
 app.post("/getOrPatientData", verifyUser, async (req, res) => {
@@ -141,7 +145,7 @@ app.post("/getOrPatientData", verifyUser, async (req, res) => {
 
     const data = await response.json();
 
-    res.json(data);
+    res.status(response.status).json(data);
 });
 
 server.listen(port, () => {

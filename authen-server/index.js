@@ -44,7 +44,7 @@ app.post("/lineIdAuthen", async (req, res) => {
     const userData = await userCheck.json();
 
     if (userCheck.status !== 200) {
-        return res.status(userCheck.status).json(userData);
+        return res.status(userCheck.status).json(userData); //Possible status 200, 400, 404, 500
     }
 
     // 2. Check user is active
@@ -66,7 +66,7 @@ app.post("/lineIdAuthen", async (req, res) => {
 
     const isActive = await checkActiveUser.json();
 
-    return res.status(checkActiveUser.status).json(isActive);
+    return res.status(checkActiveUser.status).json(isActive); //Possible status 200, 400, 403, 500
 });
 
 server.listen(port, () => {

@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkpoint Operation Monitor</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        /* Custom Loader */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Image styling */
+        .patient-img {
+            max-width: 100%;
+            height: auto; 
+            object-fit: contain; 
+            max-height: 250px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans text-gray-800">
+
+    <div id="global-loader" class="fixed inset-0 bg-white/90 z-50 flex flex-col items-center justify-center backdrop-blur-sm">
+        <div class="loader mb-4"></div>
+        <p class="text-gray-500 font-medium">Initializing System...</p>
+    </div>
+
+    <div class="max-w-md mx-auto bg-white min-h-screen shadow-xl relative">
+        
+        <header class="bg-blue-600 text-white p-4 shadow-md sticky top-0 z-20 flex justify-between items-center">
+            <h1 class="text-lg font-bold tracking-wide">OR Monitor Checkpoint</h1>
+            <button onclick="window.location.reload()" class="text-xs bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded transition-colors">
+                Refresh
+            </button>
+        </header>
+
+        <main class="p-4 pb-24">
+
+            <div id="input-section" class="flex flex-col gap-6 py-8 transition-all duration-300">
+                
+                <div class="text-center space-y-1">
+                    <h2 class="text-xl font-bold text-gray-800">Search Patient</h2>
+                    <p class="text-sm text-gray-500">Scan QR Code or Enter HN</p>
+                </div>
+
+                <button onclick="handleScanQR()" class="group flex items-center justify-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white py-4 px-6 rounded-2xl shadow-lg shadow-emerald-200 transform active:scale-95 transition-all w-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                    </svg>
+                    <span class="text-lg font-semibold">Scan QR Code</span>
+                </button>
+
+                <div class="relative flex py-2 items-center">
+                    <div class="flex-grow border-t border-gray-200"></div>
+                    <span class="flex-shrink-0 mx-4 text-gray-400 text-xs font-medium uppercase tracking-widest">OR</span>
+                    <div class="flex-grow border-t border-gray-200"></div>
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-3">
+                    <label class="block text-sm font-semibold text-gray-700 ml-1">Hospital Number (HN)</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="hn-input" placeholder="Ex. 123456789" class="flex-1 border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none text-lg bg-white" inputmode="numeric">
+                        <button onclick="handleManualInput()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl shadow-md font-medium transition-colors">
+                            Search
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="profile-section" class="hidden transition-opacity duration-300">
+                
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden mb-6">
+                    
+                    <div class="w-full bg-slate-100 p-4 flex justify-center border-b border-gray-100">
+                        <img id="p-image" src="" alt="Patient Image" class="patient-img rounded-lg shadow-sm">
+                    </div>
+
+                    <div class="p-5 space-y-4">
+                        
+                        <div class="flex justify-between items-start border-b border-gray-100 pb-3">
+                            <div class="space-y-1">
+                                <h2 class="text-xl font-bold text-gray-900 leading-tight" id="p-name">Loading...</h2>
+                                <div class="flex flex-wrap gap-2 text-xs font-semibold">
+                                    <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100" id="p-hn">HN: -</span>
+                                    <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-100" id="p-an">AN: -</span>
+                                    <span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100" id="p-age">Age: -</span>
+                                </div>
+                            </div>
+                            <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide shadow-sm" id="p-dept">
+                                -
+                            </span>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            
+                            <div class="col-span-2 bg-rose-50 p-3 rounded-xl border border-rose-100">
+                                <p class="text-rose-500 text-xs font-bold uppercase mb-1 tracking-wider">Diagnosis</p>
+                                <p class="font-medium text-gray-800 text-base leading-snug break-words" id="p-diagnosis">-</p>
+                            </div>
+
+                            <div class="col-span-2 bg-amber-50 p-3 rounded-xl border border-amber-100">
+                                <p class="text-amber-600 text-xs font-bold uppercase mb-1 tracking-wider">Operation</p>
+                                <p class="font-medium text-gray-800 text-base leading-snug break-words" id="p-operation">-</p>
+                            </div>
+
+                            <div class="col-span-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                <p class="text-gray-500 text-xs font-bold uppercase mb-1">Ward</p>
+                                <p class="font-medium text-gray-800 break-words" id="p-ward">-</p>
+                            </div>
+
+                            <div class="bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                                <p class="text-gray-400 text-xs font-semibold uppercase">Date</p>
+                                <p class="font-semibold text-gray-700" id="p-date">-</p>
+                            </div>
+                            <div class="bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                                <p class="text-gray-400 text-xs font-semibold uppercase">Room</p>
+                                <p class="font-semibold text-gray-700" id="p-room">-</p>
+                            </div>
+                            
+                            <div class="col-span-2 bg-gray-50 p-2.5 rounded-lg border border-gray-100 flex items-center gap-2">
+                                <div>
+                                    <p class="text-gray-400 text-xs font-semibold uppercase">Doctor</p>
+                                    <p class="font-semibold text-gray-700" id="p-doctor">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-lg p-5 mb-8">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-100">Update Status</h3>
+                    
+                    <form id="status-form" class="space-y-3">
+                        
+                        <div class="space-y-2">
+                            <label class="group relative flex items-center p-3 border rounded-xl cursor-pointer hover:bg-blue-50 transition-all has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 has-[:checked]:shadow-md">
+                                <input type="radio" name="patient_status" value="1" class="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300">
+                                <span class="ml-3 font-medium text-gray-700 group-hover:text-blue-700">รอผ่าตัด</span>
+                            </label>
+                            
+                            <label class="group relative flex items-center p-3 border rounded-xl cursor-pointer hover:bg-blue-50 transition-all has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 has-[:checked]:shadow-md">
+                                <input type="radio" name="patient_status" value="2" class="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300">
+                                <span class="ml-3 font-medium text-gray-700 group-hover:text-blue-700">กำลังผ่าตัด</span>
+                            </label>
+
+                            <label class="group relative flex items-center p-3 border rounded-xl cursor-pointer hover:bg-blue-50 transition-all has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 has-[:checked]:shadow-md">
+                                <input type="radio" name="patient_status" value="3" class="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300">
+                                <span class="ml-3 font-medium text-gray-700 group-hover:text-blue-700">ผ่าตัดเสร็จ</span>
+                            </label>
+
+                            <label class="group relative flex items-center p-3 border rounded-xl cursor-pointer hover:bg-blue-50 transition-all has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 has-[:checked]:shadow-md">
+                                <input type="radio" name="patient_status" value="4" class="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300">
+                                <span class="ml-3 font-medium text-gray-700 group-hover:text-blue-700">กลับหอผู้ป่วย</span>
+                            </label>
+                            
+                            <label class="group relative flex items-center p-3 border rounded-xl cursor-pointer hover:bg-blue-50 transition-all has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 has-[:checked]:shadow-md">
+                                <input type="radio" name="patient_status" value="5" class="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300">
+                                <span class="ml-3 font-medium text-gray-700 group-hover:text-blue-700">กลับบ้าน</span>
+                            </label>
+
+                            <label class="group relative flex items-center p-3 border rounded-xl cursor-pointer hover:bg-red-50 transition-all has-[:checked]:border-red-500 has-[:checked]:bg-red-50 has-[:checked]:shadow-md mt-4">
+                                <input type="radio" name="patient_status" value="6" class="w-5 h-5 text-red-600 focus:ring-red-500 border-gray-300">
+                                <span class="ml-3 font-medium text-gray-700 group-hover:text-red-700">ยกเลิกการผ่าตัด</span>
+                            </label>
+                        </div>
+
+                        <div class="pt-6 flex flex-col gap-3">
+                            <button type="button" onclick="handleSubmitStatus()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transform active:scale-95 transition-all">
+                                Update Status
+                            </button>
+                            <button type="button" onclick="resetToInput()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 px-4 rounded-xl transition-all">
+                                Close / Back to Search
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // --- Global State ---
+        let currentPatient = null;
+        let currentUserProfile = null;
+
+        // --- Data Cleaning Logic ---
+        function cleanText(str) {
+            if (typeof str !== 'string') return str;
+            // 1. Replace multiple spaces with single space
+            // 2. Trim start/end whitespace
+            return str.replace(/\s+/g, ' ').trim();
+        }
+
+        function cleanPatientData(patient) {
+            const cleaned = {};
+            for (const key in patient) {
+                if (Object.hasOwnProperty.call(patient, key)) {
+                    cleaned[key] = cleanText(patient[key]);
+                }
+            }
+            return cleaned;
+        }
+
+        // --- UI Helper Functions ---
+        function showLoader(show, text = "Loading...") {
+            const loader = document.getElementById('global-loader');
+            if(show) {
+                loader.querySelector('p').innerText = text;
+                loader.classList.remove('hidden');
+                loader.classList.add('flex');
+            } else {
+                loader.classList.add('hidden');
+                loader.classList.remove('flex');
+            }
+        }
+
+        function switchView(viewName) {
+            const inputSection = document.getElementById('input-section');
+            const profileSection = document.getElementById('profile-section');
+            
+            if (viewName === 'profile') {
+                inputSection.classList.add('hidden');
+                profileSection.classList.remove('hidden');
+                // Smooth scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                // Reset inputs and state
+                document.getElementById('hn-input').value = '';
+                document.getElementById('status-form').reset();
+                currentPatient = null;
+                
+                profileSection.classList.add('hidden');
+                inputSection.classList.remove('hidden');
+            }
+        }
+
+        function showAlert(title, message, icon = 'info') {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ 
+                    title, 
+                    text: message, 
+                    icon, 
+                    confirmButtonColor: '#2563EB',
+                    borderRadius: '1rem'
+                });
+            } else {
+                alert(`${title}: ${message}`);
+            }
+        }
+
+        // --- Core Logic ---
+
+        function processNumberString(inputStr) {
+            try {
+                if (typeof inputStr !== 'string') throw new Error("Invalid Input Type");
+                inputStr = inputStr.trim();
+                
+                // Allow flexible length but must be numeric (Example data uses 9 digits, manual could be 1-9)
+                // We allow up to 20 to be safe for backend processing
+                if (inputStr.length < 1 || inputStr.length > 20) { 
+                    throw new Error("Invalid length");
+                }
+
+                if (!/^\d+$/.test(inputStr)) {
+                    throw new Error("Must be numeric");
+                }
+
+                // Standard padding rule (pad to 9 if shorter, keep if longer e.g. 10 digits)
+                // If input is "123", returns "000000123". 
+                // If input is "123456789" (9 digits), returns "123456789".
+                if (inputStr.length < 9) {
+                    return inputStr.padStart(9, '0');
+                }
+                return inputStr;
+                
+            } catch (error) {
+                console.warn(error.message);
+                return false;
+            }
+        }
+
+        async function fetchAndDisplayPatient(hn) {
+            if (!currentUserProfile) {
+                showAlert("Error", "User not identified. Please reload.", "error");
+                return;
+            }
+
+            showLoader(true, "Searching Patient...");
+            try {
+                const data = await getPatientData(hn, currentUserProfile.userId);
+                
+                if (Array.isArray(data) && data.length > 0) {
+                    // Clean data immediately upon receipt
+                    currentPatient = cleanPatientData(data[0]);
+                    renderPatientData(currentPatient);
+                    switchView('profile');
+                } else {
+                    showAlert("Not Found", "No patient found with this HN.", "warning");
+                }
+            } catch (error) {
+                console.error(error);
+                showAlert("Error", "Failed to connect to server.", "error");
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        function renderPatientData(patient) {
+            // Images
+            document.getElementById('p-image').src = patient.image || 'https://via.placeholder.com/400x300?text=No+Image';
+            
+            // Basic Info
+            const fullName = `${patient.pname || ''}${patient.fname} ${patient.lname}`;
+            document.getElementById('p-name').textContent = fullName;
+            document.getElementById('p-hn').textContent = `HN: ${patient.hn || '-'}`;
+            document.getElementById('p-an').textContent = `AN: ${patient.an || '-'}`;
+            document.getElementById('p-age').textContent = `Age: ${patient.age || '-'}`;
+            document.getElementById('p-dept').textContent = patient.department || 'OPD';
+            
+            // Medical Info
+            document.getElementById('p-diagnosis').textContent = patient.diagnosis || '-';
+            document.getElementById('p-operation').textContent = patient.operation || '-';
+            document.getElementById('p-ward').textContent = patient.ward || '-';
+            
+            // Logistics
+            document.getElementById('p-room').textContent = patient.room || '-';
+            document.getElementById('p-doctor').textContent = patient.doctor || '-';
+            document.getElementById('p-date').textContent = patient.operation_date || '-';
+        }
+
+        // --- Interaction Handlers ---
+
+        async function handleManualInput() {
+            const inputVal = document.getElementById('hn-input').value;
+            const processedHn = processNumberString(inputVal);
+
+            if (processedHn === false) {
+                showAlert("Invalid Input", "Please enter a valid numeric HN.", "error");
+                document.getElementById('hn-input').value = ''; 
+                return;
+            }
+            await fetchAndDisplayPatient(processedHn);
+        }
+
+        async function handleScanQR() {
+            // Check if running in LINE App
+            if (!liff.isInClient() && !liff.isLoggedIn()) {
+                 showAlert("Feature Unavailable", "QR Scanning is only available in LINE mobile app.", "warning");
+                 return;
+            }
+            try {
+                const result = await liff.scanCodeV2();
+                if (result.value) {
+                    const processedHn = processNumberString(result.value);
+                    if (processedHn === false) {
+                        showAlert("Invalid QR", "The scanned code is not a valid HN.", "error");
+                    } else {
+                        await fetchAndDisplayPatient(processedHn);
+                    }
+                }
+            } catch (error) {
+                console.error("Scan Error", error);
+                if(error.code !== "USER_CANCEL") {
+                   showAlert("Scan Error", "Could not scan QR Code.", "error"); 
+                }
+            }
+        }
+
+        async function handleSubmitStatus() {
+            const form = document.getElementById('status-form');
+            const selectedStatus = form.querySelector('input[name="patient_status"]:checked');
+
+            if (!selectedStatus) {
+                showAlert("Selection Required", "Please select a patient status.", "warning");
+                return;
+            }
+
+            if (!currentPatient || !currentUserProfile) return;
+
+            // Prepare Data Object for API
+            const updateData = {
+                operation_id: currentPatient.operation_ids, // Mapped from new JSON 'operation_ids'
+                hn: currentPatient.hn,
+                patient_fname: currentPatient.fname,
+                patient_lname: currentPatient.lname,
+                patient_status: parseInt(selectedStatus.value)
+            };
+
+            showLoader(true, "Updating Status...");
+            
+            try {
+                await updatePatientStatus(currentUserProfile.userId, updateData);
+                await Swal.fire({
+                    title: 'Success!',
+                    text: 'Patient status updated.',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                // Stay on profile page (per requirements)
+            } catch (error) {
+                showAlert("Update Failed", "Could not update status.", "error");
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        function resetToInput() {
+            switchView('input');
+        }
+
+        // --- API Functions (Standard) ---
+
+        async function getLiffId() {
+            try {
+                const backendUrl = "https://dh.tranghos.moph.go.th/or-monitor-backend";
+                const response = await fetch(`${backendUrl}/getLiffIdCheckpoint`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" }
+                });
+                const data = await response.json();
+                return data.liffId;
+            } catch (err) {
+                console.error("Error fetching LIFF ID:", err);
+            }
+        }
+
+        async function initializeLiff(liffId) {
+            try {
+                await liff.init({ liffId });
+                return true;
+            } catch (err) {
+                console.error("LIFF Init Error:", err);
+                return false;
+            }
+        }
+
+        async function verifyUser(lineUserId) {
+            const registerUrl = "https://dh.tranghos.moph.go.th/providerid-login"
+            try {
+                const backendUrl = "https://dh.tranghos.moph.go.th/or-monitor-backend";
+                const response = await fetch(`${backendUrl}/verifyLineId`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ LineUserId: lineUserId }),
+                });
+
+                if(response.status === 200) return true;
+                
+                // Error handling redirects
+                const errorPage = 'https://dh.tranghos.moph.go.th/error';
+                if(response.status === 400) window.location.href = `${errorPage}/400.html`;
+                else if(response.status === 403) window.location.href = `${errorPage}/403.html`;
+                else if(response.status === 404) window.location.href = registerUrl;
+                else if(response.status === 500) window.location.href = `${errorPage}/500.html`;
+                
+            } catch (err) {
+                console.error("Error verify user:", err);
+                window.location.href = 'https://dh.tranghos.moph.go.th/error/500.html';
+            }
+        }
+
+        async function getPatientData(hn, lineUserId) {
+            try {
+                const backendUrl = "https://dh.tranghos.moph.go.th/or-monitor-backend";
+                const response = await fetch(`${backendUrl}/getOrPatientData`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ LineUserId: lineUserId, hn: hn }),
+                });
+                return await response.json();
+            } catch (err) {
+                console.error("Error fetching patient Data:", err);
+                return [];
+            }
+        }
+
+        async function updatePatientStatus(lineUserId, data) {
+            try {
+                const backendUrl = "https://dh.tranghos.moph.go.th/or-monitor-backend";
+                const response = await fetch(`${backendUrl}/updateOrPatientStatusMonitor`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        LineUserId: lineUserId,
+                        operation_id: data.operation_id,
+                        hn: data.hn,
+                        patient_fname: data.patient_fname,
+                        patient_lname: data.patient_lname,
+                        patient_status: data.patient_status,
+                    }),
+                });
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                return await response.json();
+            } catch (err) {
+                console.error("Error update patient Data:", err);
+                throw err;
+            }
+        }
+
+        // --- Bootstrapper ---
+        document.addEventListener('DOMContentLoaded', async function () {
+            const liffId = await getLiffId();
+            if (!liffId) { 
+                alert("System Error: Cannot retrieve LIFF ID."); 
+                showLoader(false);
+                return; 
+            }
+
+            await initializeLiff(liffId);
+
+            if (!liff.isLoggedIn()) {
+                liff.login({ redirectUri: window.location.href });
+                return;
+            }
+
+            try {
+                currentUserProfile = await liff.getProfile();
+                await verifyUser(currentUserProfile.userId);
+                showLoader(false);
+            } catch (e) {
+                console.error(e);
+                alert("Initialization Failed: Please try again.");
+            }
+        });
+    </script>
+</body>
+</html>

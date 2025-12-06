@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkpoint Operation Monitor</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+</head>
+
+<body>
+
+
+    <script>
+
+        // --- Global State ---
+        let patientData = null;
+        let userProfile = null;
+
+        // --- API & Helper Functions ---
+
+        async function getLiffId() {
+            try {
+                const backendUrl = "https://dh.tranghos.moph.go.th/or-monitor-backend";
+                const responseliffId = await fetch(`${backendUrl}/getLiffIdCheckpoint`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" }
+                });
+                const liffId = await responseliffId.json();
+                return liffId.liffId;
+            } catch (err) {
+                console.error("Error fetching LIFF ID:", err);
+            }
+        }
+
+        async function initializeLiff(liffId) {
+            try {
+                await liff.init({ liffId });
+                return true;
+            } catch (err) {
+                console.error("LIFF Init Error:", err);
+                return false;
+            }
+        }
+
+        async function scanQR(lineUserId) {
+            try {
+                const result = await liff.scanCodeV2();
+                const preProcessingHn = result.value;
+                const hn = processNumberString(preProcessingHn);
+                // const patientData = await getPatientData(hn, lineUserId);
+                // console.log(patientData);
+            } catch (error) {
+                console.log("error", error);
+            }
+        }
+
+        async function verifyUser(lineUserId) {
+            console.log(lineUserId);
+            const registerUrl = "https://dh.tranghos.moph.go.th/providerid-login"
+            try {
+                
+                const backendUrl = "https://dh.tranghos.moph.go.th/or-monitor-backend";
+                const response = await fetch(`${backendUrl}/verifyLineId`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        LineUserId: lineUserId,
+                    }),
+                });
+
+                console.log(response.status);
+
+                // Possible response status 200, 400, 403, 404, 500
+                if(response.status === 200) {
+                    return true;
+                }
+                
+                else if(response.status === 400) {
+                    window.location.href = 'https://dh.tranghos.moph.go.th/error/400.html';
+                }
+
+                else if(response.status === 403) {
+                    window.location.href = 'https://dh.tranghos.moph.go.th/error/403.html';
+                }                
+
+                else if(response.status === 404) {
+                    window.location.href = registerUrl;
+                }
+
+                else if(response.status === 500) {
+                    window.location.href = 'https://dh.tranghos.moph.go.th/error/500.html';
+                }
+                
+            } catch (err) {
+                console.error("Error verify user:", err);
+                window.location.href = 'https://dh.tranghos.moph.go.th/error/500.html';
+            }
+        }
+
+        function processNumberString(inputStr) {
+            // 1. Check if input is actually a string
+            if (typeof inputStr !== 'string') {
+                throw new Error("Input must be of type string.");
+                return false;
+            }
+
+            // 2. Check string length constraints (1 <= length <= 9)
+            if (inputStr.length < 1 || inputStr.length > 9) {
+                throw new Error("String length must be between 1 and 9 characters.");
+                return false;
+            }
+
+            // 3. Check if all characters are numbers using a Regular Expression
+            // ^ = start of line, \d = digit, + = one or more, $ = end of line
+            if (!/^\d+$/.test(inputStr)) {
+                throw new Error("String must contain only numeric characters (0-9).");
+                return false;
+            }
+
+            // 4. Pad left side with '0' to make total length 9
+            return inputStr.padStart(9, '0');
+        }
+
+        async function getPatientData(hn, lineUserId) {
+            try {
+                const backendUrl = "https://dh.tranghos.moph.go.th/or-monitor-backend";
+                const response = await fetch(`${backendUrl}/getOrPatientData`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        LineUserId: lineUserId,
+                        hn: hn,
+                    }),
+                });
+                return await response.json();
+            } catch (err) {
+                console.error("Error fetching patient Data:", err);
+                return [];
+            }
+        }
+
+        async function updatePatientStatus(lineUserId, data) {
+            try {
+                const backendUrl = "https://dh.tranghos.moph.go.th/or-monitor-backend";
+
+                const response = await fetch(`${backendUrl}/updateOrPatientStatusMonitor`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        LineUserId: lineUserId,        // Comes from the first argument
+                        operation_id: data.operation_id, // Comes from the 'data' object
+                        hn: data.hn,
+                        patient_fname: data.patient_fname,
+                        patient_lname: data.patient_lname,
+                        patient_status: data.patient_status,
+                    }),
+                });
+
+                // It is good practice to check if the response was successful
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (err) {
+                console.error("Error update patient Data:", err);
+                return [];
+            }
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', async function () {
+            const liffId = await getLiffId();
+            if (!liffId) { alert("Cannot get LIFF ID"); return; }
+
+            await initializeLiff(liffId);
+
+            if (!liff.isLoggedIn()) {
+                liff.login({ redirectUri: window.location.href });
+                return;
+            }
+
+            const userProfile = await liff.getProfile();
+
+            await verifyUser(userProfile.userId);
+
+        });
+
+    </script>
+
+</body>
+
+</html>
