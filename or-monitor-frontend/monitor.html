@@ -15,19 +15,15 @@
             --text-secondary: #aaaaaa;
 
             /* Status Colors */
-            --status-waiting: #f39c12;
-            --status-operating: #e74c3c;
-            --status-finished: #27ae60;
-            --status-ward: #8e44ad;
-            --status-home: #3498db;
-            --status-cancelled: #ffffff;
+            --status-waiting: #f39c12;   /* 1: Orange */
+            --status-operating: #e74c3c; /* 2: Red Pulse */
+            --status-finished: #27ae60;  /* 3: Green */
+            --status-ward: #8e44ad;      /* 4: Purple */
+            --status-home: #3498db;      /* 5: Blue */
+            --status-cancelled: #ffffff; /* 6: White Theme */
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: 'Sarabun', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -50,16 +46,8 @@
             border-bottom: 3px solid #444;
         }
 
-        h1 {
-            font-size: 3.2rem;
-            font-weight: bold;
-            color: #3498db;
-        }
-
-        .clock {
-            font-size: 2.5rem;
-            font-weight: 300;
-        }
+        h1 { font-size: 3.2rem; font-weight: bold; color: #3498db; }
+        .clock { font-size: 2.5rem; font-weight: 300; }
 
         /* --- Main Content (Grid) --- */
         #monitor-container {
@@ -86,22 +74,9 @@
             animation: fadeIn 0.5s ease-in-out;
         }
 
-        .patient-info {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .patient-name {
-            font-size: 2.3rem;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
-
-        .patient-hn {
-            font-size: 1.5rem;
-            color: var(--text-secondary);
-        }
+        .patient-info { display: flex; flex-direction: column; gap: 8px; }
+        .patient-name { font-size: 2.3rem; font-weight: bold; letter-spacing: 1px; }
+        .patient-hn { font-size: 1.5rem; color: var(--text-secondary); }
 
         .status-badge {
             font-size: 1.8rem;
@@ -115,7 +90,7 @@
             white-space: nowrap;
         }
 
-        /* --- Status Specific Styling --- */
+        /* --- Status Logic --- */
         .st-waiting { border-left-color: var(--status-waiting); }
         .st-waiting .status-badge { background-color: var(--status-waiting); color: #000; }
 
@@ -151,12 +126,10 @@
             border-top: 1px solid #333;
         }
 
-        /* --- Animations --- */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes pulse {
             0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
@@ -185,13 +158,14 @@
         const PAGE_DURATION = 8000;
         const ITEMS_PER_PAGE = 6;
 
-        // --- Global State Variables (Important for reloading) ---
+        // --- Global State ---
         let rawData = [];
         let currentPage = 0;
         let totalPages = 1;
-        let userProfile = null; // Store user profile globally
+        let userProfile = null;
 
-        // --- API Functions ---
+        // --- API & Helper Functions ---
+
         async function getLiffId() {
             try {
                 const backendUrl = "https://dh.tranghos.moph.go.th/or-monitor-backend";
@@ -217,7 +191,7 @@
                 return await responseList.json();
             } catch (err) {
                 console.error("Error fetching patient list:", err);
-                return []; // Return empty array on failure
+                return [];
             }
         }
 
@@ -231,31 +205,41 @@
             }
         }
 
-        // --- Core Logic ---
-
-        // Function to fetch data and update global state
         async function fetchDataAndReload() {
             if (!userProfile) return;
-
-            console.log("Refreshing data from server...");
             const newData = await getPatientList(userProfile.userId);
-            
             if (Array.isArray(newData)) {
                 rawData = newData;
                 totalPages = Math.ceil(rawData.length / ITEMS_PER_PAGE) || 1;
-                console.log(`Data updated. Total items: ${rawData.length}, Total pages: ${totalPages}`);
             }
         }
 
-        function getStatusClass(status) {
-            switch (status) {
-                case 'รอผ่าตัด': return 'st-waiting';
-                case 'กำลังผ่าตัด': return 'st-operating';
-                case 'ผ่าตัดเสร็จ': return 'st-finished';
-                case 'กลับหอผู้ป่วย': return 'st-ward';
-                case 'กลับบ้าน': return 'st-home';
-                case 'ยกเลิกการผ่าตัด': return 'st-cancelled';
+        // --- NEW: Function to get CSS Class based on INT Status ---
+        function getStatusClass(statusId) {
+            // Ensure we are comparing integers
+            const id = parseInt(statusId);
+            switch (id) {
+                case 1: return 'st-waiting';    // รอผ่าตัด
+                case 2: return 'st-operating';  // กำลังผ่าตัด
+                case 3: return 'st-finished';   // ผ่าตัดเสร็จ
+                case 4: return 'st-ward';       // กลับหอผู้ป่วย
+                case 5: return 'st-home';       // กลับบ้าน
+                case 6: return 'st-cancelled';  // ยกเลิกการผ่าตัด
                 default: return 'st-home';
+            }
+        }
+
+        // --- NEW: Function to get Text based on INT Status ---
+        function getStatusText(statusId) {
+            const id = parseInt(statusId);
+            switch (id) {
+                case 1: return 'รอผ่าตัด';
+                case 2: return 'กำลังผ่าตัด';
+                case 3: return 'ผ่าตัดเสร็จ';
+                case 4: return 'กลับหอผู้ป่วย';
+                case 5: return 'กลับบ้าน';
+                case 6: return 'ยกเลิกการผ่าตัด';
+                default: return 'ไม่ระบุสถานะ';
             }
         }
 
@@ -280,16 +264,13 @@
         function renderPage(pageIndex) {
             const container = document.getElementById('monitor-container');
             const indicator = document.getElementById('page-indicator');
-
             container.innerHTML = '';
 
-            // Handle empty data
             if (rawData.length === 0) {
                 indicator.innerText = "ไม่พบข้อมูล";
                 return;
             }
 
-            // Ensure pageIndex is valid
             if (pageIndex >= totalPages) pageIndex = 0;
 
             const start = pageIndex * ITEMS_PER_PAGE;
@@ -298,9 +279,12 @@
 
             pageData.forEach(patient => {
                 const card = document.createElement('div');
+                
+                // Use the INT status to get Class and Text
                 const statusClass = getStatusClass(patient.patient_status);
-                card.className = `patient-card ${statusClass}`;
+                const statusText = getStatusText(patient.patient_status);
 
+                card.className = `patient-card ${statusClass}`;
                 const maskedFullName = maskName(patient.patient_fname, patient.patient_lname);
                 const maskedHNNum = maskHN(patient.hn);
 
@@ -310,7 +294,7 @@
                     <div class="patient-hn">HN: ${maskedHNNum}</div>
                 </div>
                 <div class="status-badge">
-                    ${patient.patient_status}
+                    ${statusText}
                 </div>
             `;
                 container.appendChild(card);
@@ -320,16 +304,10 @@
         }
 
         async function cyclePages() {
-            // Render Current Page
             renderPage(currentPage);
-            
-            // Increment for next loop
             currentPage++;
-
-            // Check if we reached the end
             if (currentPage >= totalPages) {
-                currentPage = 0; // Reset to first page
-                // FETCH NEW DATA HERE
+                currentPage = 0;
                 await fetchDataAndReload();
             }
         }
@@ -339,27 +317,22 @@
             const liffId = await getLiffId();
             if(!liffId) { alert("Cannot get LIFF ID"); return; }
 
-            const isLiffReady = await initializeLiff(liffId);
+            await initializeLiff(liffId);
             
             if (!liff.isLoggedIn()) {
                 liff.login({ redirectUri: window.location.href });
                 return;
             }
 
-            // Store Profile
             userProfile = await liff.getProfile();
-            console.log("User ID:", userProfile.userId);
-
-            // Initial Data Load
+            
             await fetchDataAndReload();
 
-            // Start Clock
             setInterval(updateClock, 1000);
             updateClock();
 
-            // Start Page Cycle
-            cyclePages(); // Run immediately
-            setInterval(cyclePages, PAGE_DURATION); // Loop
+            cyclePages();
+            setInterval(cyclePages, PAGE_DURATION);
         });
 
     </script>
