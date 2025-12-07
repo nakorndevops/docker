@@ -33,6 +33,7 @@ export const updateOrPatientStatus = async (req, res) => {
     patient_fname: patient_fname, 
     patient_lname: patient_lname,
     patient_status: patient_status,
+    room_id: room_id,
   } = req.body;
 
   // Validate inputs
@@ -42,13 +43,13 @@ export const updateOrPatientStatus = async (req, res) => {
 
   try {
     const query = `
-      INSERT INTO patient_operation_status_monitor (operation_id, hn, patient_fname, patient_lname, patient_status)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO patient_operation_status_monitor (operation_id, hn, patient_fname, patient_lname, patient_status, room_id)
+      VALUES (?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         patient_status = ?;
     `;
     
-    const [result] = await pool.query(query, [operation_id, hn, patient_fname, patient_lname, patient_status, patient_status]);
+    const [result] = await pool.query(query, [operation_id, hn, patient_fname, patient_lname, patient_status, room_id, patient_status]);
 
     res.status(200).json({ 
       success: true, 

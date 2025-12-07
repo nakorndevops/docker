@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS patient_operation_status_monitor (
     hn VARCHAR(9) NOT NULL,
     patient_fname VARCHAR(100),
     patient_lname VARCHAR(100),
+    room_id INT UNSIGNED,
     patient_status INT UNSIGNED NOT NULL,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (operation_id)

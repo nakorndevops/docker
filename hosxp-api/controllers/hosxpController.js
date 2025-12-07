@@ -229,7 +229,8 @@ export const getPatientOperationData = async (req, res) => {
           TRIM(SUBSTRING_INDEX(d.NAME, ',', - 1)),
           TRIM(SUBSTRING_INDEX(d.NAME, ',', 1))
         ) AS doctor,
-        oroom.room_name AS room
+        oroom.room_name AS room,
+        ol.room_id AS room_id
       FROM
         operation_list ol
         LEFT JOIN doctor d ON ol.request_doctor = d.

@@ -96,6 +96,7 @@ app.post("/updateOrPatientStatusMonitor", verifyUser, async (req, res) => {
         patient_fname: patient_fname,
         patient_lname: patient_lname,
         patient_status: patient_status,
+        room_id: room_id,
     } = req.body;
 
     const headers = {
@@ -109,6 +110,7 @@ app.post("/updateOrPatientStatusMonitor", verifyUser, async (req, res) => {
         patient_fname: patient_fname,
         patient_lname: patient_lname,
         patient_status: patient_status,
+        room_id: room_id,
     });
 
     const response = await fetch(orDbApiUrl + "/orPatientStatusMonitorUpdate", {
