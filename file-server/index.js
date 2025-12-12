@@ -7,6 +7,7 @@ const app = express();
 app.use(express.json());
 app.use('/image', express.static(path.join(__dirname, 'image')));
 app.use('/style', express.static(path.join(__dirname, 'style')));
+app.use('/html', express.static(path.join(__dirname, 'html')));
 app.use('/http_error', express.static(path.join(__dirname, 'http_error')));
 
 const port = process.env.PORT || 3006;

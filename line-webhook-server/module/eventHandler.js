@@ -53,17 +53,6 @@ const errorReply = {
 export function createEventHandler(config) {
   const { client, logicServerUrl, logicServerApiKey, userdbApiUrl, userdbApiKey, hosxpApiUrl, hosxpApiKey } = config;
 
-  // Time Log
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1; // Month is 0-indexed
-  const day = now.getDate();
-  const hours = now.getHours();
-  const minutes = now.getMinutes();
-  const seconds = now.getSeconds();
-  const readableTime = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  console.log("Sent Reply Message to Line Server: ", readableTime); // Example: 2025-11-12 10:03:45  
-
   // This is the actual event handler, now much flatter
   return async function handleEvent(event) {
     // 1. Guard Clause: Ignore non-text messages

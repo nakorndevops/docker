@@ -56,6 +56,7 @@ export function createLinkAccountHandler(config) {
       });
 
       // Extract Critical Info
+      console.log(profileData.data);
       const organization = profileData.data.organization[0];
       if (!organization) {
         throw new Error("No organization data found in provider profile.");
