@@ -36,4 +36,4 @@ DO
     -- Logic 1: Remove "Finished/Discharged" patients (Status 4, 5, 6) after 2 hours
     (patient_status IN (4, 5, 6) AND last_updated < (NOW() - INTERVAL 2 HOUR)) 
     -- Logic 2: Safety net - Remove ANY stale data older than 24 hours
-    OR last_updated < (NOW() - INTERVAL 1 DAY);
+    OR last_updated < (NOW() - INTERVAL 12 HOUR);

@@ -60,6 +60,10 @@ export function createEventHandler(config) {
       return null;
     }
 
+    // --- LOG START: Message Received ---
+    const receiveTime = new Date();
+    console.log(`[${receiveTime.toISOString()}] 📩 Message received from user ${event.source.userId}: "${event.message.text}"`);
+
     const { replyToken } = event;
     const { userId: lineUserId } = event.source;
     const { text: sentMessage } = event.message;
@@ -73,7 +77,10 @@ export function createEventHandler(config) {
 
       // 3. Guard Clause: User not registered
       if (!user) {
-        return client.replyMessage(replyToken, registerReply);
+        console.log(`[${new Date().toISOString()}] User ${lineUserId} not found. Sending register reply.`);
+        const result = await client.replyMessage(replyToken, registerReply);
+        console.log(`[${new Date().toISOString()}] ✅ Register reply sent. Result:`, result);
+        return result;
       }
 
       // 4. Check if user is active/authorized
@@ -84,7 +91,10 @@ export function createEventHandler(config) {
 
       // 5. Guard Clause: User not authorized
       if (!isAuthorized) {
-        return client.replyMessage(replyToken, unauthorizedReply);
+        console.log(`[${new Date().toISOString()}] User ${lineUserId} unauthorized. Sending forbidden reply.`);
+        const result = await client.replyMessage(replyToken, unauthorizedReply);
+        console.log(`[${new Date().toISOString()}] ✅ Unauthorized reply sent. Result:`, result);
+        return result;
       }
 
       // 6. Main Logic: Get and send the bot's reply
@@ -92,12 +102,22 @@ export function createEventHandler(config) {
         apiUrl: logicServerUrl,
         apiKey: logicServerApiKey,
       });
-      return client.replyMessage(replyToken, replyMessage);
+
+      // --- LOG END: Sending Reply ---
+      const sendTime = new Date();
+      console.log(`[${sendTime.toISOString()}] 📤 Sending reply to ${lineUserId}...`);
+
+      const result = await client.replyMessage(replyToken, replyMessage);
+
+      const finishTime = new Date();
+      console.log(`[${finishTime.toISOString()}] ✅ Reply sent successfully. Result:`, JSON.stringify(result));
+
+      return result;
 
     } catch (err) {
       // 7. Main Error Handling
       console.error(
-        `Failed to process message for user ${lineUserId}:`,
+        `[${new Date().toISOString()}] ❌ Failed to process message for user ${lineUserId}:`,
         err.message
       );
       try {
