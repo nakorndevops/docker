@@ -530,6 +530,18 @@ services:
     networks:
       - app-network
 
+# Ollama
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    expose:
+      - "11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: always
+    networks:
+      - app-network  
+
 # Network
 networks:
   app-network:
@@ -546,6 +558,8 @@ volumes:
     name: or-data
   nginx_logs:
     name: nginx_logs
+  ollama_data:
+    name: ollama_data  
 
 # Secret
 secrets:
