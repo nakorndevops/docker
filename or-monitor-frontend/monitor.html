@@ -35,6 +35,26 @@
             flex-direction: column;
         }
 
+        /* --- Full Screen Image Overlay --- */
+        #image-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            z-index: 9999; /* Ensures it sits on top of everything */
+            display: none; /* Hidden by default */
+            justify-content: center;
+            align-items: center;
+        }
+
+        #image-overlay img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Keeps aspect ratio */
+        }
+
         /* --- Header --- */
         header {
             height: 12vh;
@@ -141,6 +161,10 @@
 
 <body>
 
+    <div id="image-overlay">
+        <img src="https://dh.tranghos.moph.go.th/image/patient-monitor-manual.png" alt="Patient Monitor Manual">
+    </div>
+
     <header>
         <h1>สถานะผู้ป่วยผ่าตัด</h1>
         <div class="clock" id="clock">00:00:00</div>
@@ -155,14 +179,16 @@
 
     <script>
         // --- Configuration ---
-        const PAGE_DURATION = 8000;
+        const PAGE_DURATION = 8000;   // 8 Seconds per page
         const ITEMS_PER_PAGE = 8;
+        const IMAGE_DURATION = 30000; // 30 Seconds for Image
 
         // --- Global State ---
         let rawData = [];
         let currentPage = 0;
         let totalPages = 1;
         let userProfile = null;
+        let pageCycleInterval = null; // Store interval ID to clear it later
 
         // --- API & Helper Functions ---
 
@@ -192,7 +218,6 @@
 
                 if(response.status === 200) return true;
                 
-                // Error handling redirects
                 const errorPage = 'https://dh.tranghos.moph.go.th/error';
                 if(response.status === 400) window.location.href = `${errorPage}/400.html`;
                 else if(response.status === 403) window.location.href = `${errorPage}/403.html`;
@@ -239,22 +264,19 @@
             }
         }
 
-        // --- NEW: Function to get CSS Class based on INT Status ---
         function getStatusClass(statusId) {
-            // Ensure we are comparing integers
             const id = parseInt(statusId);
             switch (id) {
-                case 1: return 'st-waiting';    // รอผ่าตัด
-                case 2: return 'st-operating';  // กำลังผ่าตัด
-                case 3: return 'st-finished';   // ผ่าตัดเสร็จ
-                case 4: return 'st-ward';       // กลับหอผู้ป่วย
-                case 5: return 'st-home';       // กลับบ้าน
-                case 6: return 'st-cancelled';  // ยกเลิกการผ่าตัด
+                case 1: return 'st-waiting';
+                case 2: return 'st-operating';
+                case 3: return 'st-finished';
+                case 4: return 'st-ward';
+                case 5: return 'st-home';
+                case 6: return 'st-cancelled';
                 default: return 'st-home';
             }
         }
 
-        // --- NEW: Function to get Text based on INT Status ---
         function getStatusText(statusId) {
             const id = parseInt(statusId);
             switch (id) {
@@ -305,7 +327,6 @@
             pageData.forEach(patient => {
                 const card = document.createElement('div');
                 
-                // Use the INT status to get Class and Text
                 const statusClass = getStatusClass(patient.patient_status);
                 const statusText = getStatusText(patient.patient_status);
 
@@ -328,13 +349,42 @@
             indicator.innerText = `หน้า ${pageIndex + 1} จาก ${totalPages}`;
         }
 
-        async function cyclePages() {
-            renderPage(currentPage);
-            currentPage++;
-            if (currentPage >= totalPages) {
+        // --- NEW: Sequence Controller ---
+        async function startDisplayCycle() {
+            // PHASE 1: Show Image
+            const overlay = document.getElementById('image-overlay');
+            overlay.style.display = 'flex';
+
+            // While image is showing, fetch new data from server
+            await fetchDataAndReload();
+
+            // Wait for 30 seconds
+            setTimeout(() => {
+                // PHASE 2: Hide Image, Show Monitor
+                overlay.style.display = 'none';
+                
+                // Reset to first page
                 currentPage = 0;
-                await fetchDataAndReload();
-            }
+                renderPage(0);
+
+                // Start cycling through pages
+                if (pageCycleInterval) clearInterval(pageCycleInterval);
+
+                pageCycleInterval = setInterval(() => {
+                    currentPage++;
+                    
+                    // Check if we reached the end of the pages
+                    if (currentPage >= totalPages) {
+                        clearInterval(pageCycleInterval);
+                        // Loop back to Phase 1 (Image)
+                        startDisplayCycle();
+                    } else {
+                        // Show next page
+                        renderPage(currentPage);
+                    }
+                }, PAGE_DURATION);
+
+            }, IMAGE_DURATION);
         }
 
         // --- Initialization ---
@@ -351,15 +401,14 @@
 
             userProfile = await liff.getProfile();
 
-            await verifyUser(userProfile.userId)
+            await verifyUser(userProfile.userId);
             
-            await fetchDataAndReload();
-
+            // Start Clock
             setInterval(updateClock, 1000);
             updateClock();
 
-            cyclePages();
-            setInterval(cyclePages, PAGE_DURATION);
+            // START THE MAIN SEQUENCE (Image -> Pages -> Loop)
+            startDisplayCycle();
         });
 
     </script>
